@@ -555,3 +555,105 @@ are independently scaled!
 
 I'm getting "no such function: log" and crashing sqlpeek when I know that the same query works directly in sqlite... We probably want
 to not crash here but print a warning.
+
+# Wiring Experiment 001
+
+Plot x axis is the wiring depth to root of a symbol using a library that consists only
+of `zero` and `succ(x)`. The y axis shows the count of symbols with that depth summed
+over 1000 generated programs. Color shows the length of a program in lines (values are
+10, 20 .. 100). Each panel shows a different value for the exponential decay rate used
+in sampling an argument to  the `succ(x)` function. An increase of 1.0 in the rate
+means probability decreases by `e`. The bottom panel (`zero`) shows flat sampling across
+possible arguments.
+
+The figure has two variants: when "cheating" we turn off the `zero` value after the first
+Op is sampled, leaving only `succ(x)`. This is able to dramatically extend the depth of
+the wiring distribution esp for decay rates 0.5 and 1.0.
+
+# Program Minimization
+
+Is like Binary Search in that it is O(log n) but works on DAGs instead of Sequences.
+Source Code describing Dataflow has this structure.
+Version Control History (VCH) has this structure.
+You can search through subsets of the DAG of a program for the minimal program that
+satisfies some bug/property/behaviour. And you can do the same to VCH, looking for the
+minimal set of changes to the repo. The thing is... this algorithm is only efficient if we
+make certain assumptions about the structure of these minimal programs / changesets. It
+only works if one of the following conditions are met:
+1. The change is a single line / changeset / node in the graph.
+2. The change is a compact set (connected component) of adjacet lines / changesets / nodes.
+3. The behaviour is not over-determined. There may be multiple nodes that cause the
+behaviour, but we won't detect them until we remove the last one. Then we'll have to
+go back and try the full program - the final line. We'll do this and find that the bug
+remains, and the search process begins again. The result of this search process should be
+a set of DAGs with a single node colored to represent that removing that node toggles the
+condition. E.g. consider the program testing condition c. Good test
+
+Non monotonic
+
+    [1] x := 0
+    [2] x += 1
+    [3] x += 1
+    [4] x += 1
+    [5] x += 1
+    [6] x += 1
+    [7] c := x%2 == 0
+
+The condition changes if we remove ANY of lines [2..6], but not if we remove any PAIR of those lines. But yes if we remove any TRIPLE of lines, etc.
+
+Overdetermined
+
+    [1] s := init_server()
+    [2] kill_server(s)
+    [3] kill_server(s)
+    [4] kill_server(s)
+    [5] kill_server(s)
+    [6] c := is_server_alive?()
+
+Good test
+
+    [1] x := 1
+    [2] x *= 2
+    [3] x *= 3
+    [4] x *= 5
+    [5] x *= 7
+    [6] x *= 11
+    [7] c := x%3 == 0
+
+The right thing for a minimizer to report in these three cases are:
+
+Non monotonic:
+
+  Non monotonic tests can either (a) stop greedily as soon as `c` changes. (b) continue
+  on until `c` changes BACK, then report that the system is non monotonic. (c) continue
+  on until we have identified the smallest possible program + delta that makes the initial
+  change, in this case there is one possible base (lines 1 and 7) and five red lines
+  (lines 2..6).
+
+          x := 0
+    [RED] x += 1 
+          c := x%2 == 0
+
+Overdetermined
+
+    [1] s := init_server()
+    [2] kill_server(s)
+    [3] kill_server(s)
+    [4] kill_server(s)
+    [5] kill_server(s)
+    [6] c := is_server_alive?()
+
+
+I don't see how looking for the minimal DAG is possible in general.
+We believe the structure is a DAG... but actually it's just the nodes that matter and the
+edges can be rewired. If two nodes produce the same value (e.g. the number 3.0) it doesn't
+matter which of them feeds that value as an argument to a downstream function. If we make
+a change to the repo README it's not actually a hard requirement of the behaviour of the
+program after that changeset.
+
+The funny thing about the DAG is that it might not actually show HARD dependence, i.e. it
+may be possible to cut out a node (src line or changeset), maybe tie the graph back
+together and have things work fine.
+
+!!! I found [this post by Regher](https://blog.regehr.org/archives/527) on generalized delta debugging.
+That led to [bugpoint](https://llvm.org/docs/Bugpoint.html) mentioned by Chris Lattner.
