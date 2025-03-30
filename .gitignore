@@ -1,0 +1,7 @@
+bin/
+db/
+logs/
+coverage.out
+coverage.html
+*.sqlite
+*.db
