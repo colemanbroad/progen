@@ -20,7 +20,7 @@ func runWiringExperiment() {
 				sp.WireDecayLen = decay
 				sp.Program_length = 10 * i
 				fmt.Println("Begin wiring: ", sp)
-				run_basic_program_gen(1000, sp)
+				run_basic_program_gen_value_histogram(1000, sp)
 			}
 		}
 	}
@@ -41,9 +41,36 @@ func saveWiring(sp SampleParams, nprog int, valuehist map[int]int) {
 			return
 		}
 	}
-
 }
 
+type ValueHistogram map[int]int
+
+func (h ValueHistogram) add(val int) {
+	c, exist := h[val]
+	if !exist {
+		c = 0
+	}
+	h[val] = c + 1
+}
+
+// How does deeper wiring affect the Powers of Two distribution?
+func runWirePowOfTwoExperiment() {
+	Library = make(map[Sym]FnCall)
+	addBasiMathLib()
+	addPowerOfTwo()
+	// ch := make(chan ValueMap)
+	for i := range 20 {
+		init_history()
+		init_reward()
+		sp := newSampleParams()
+		prog := sampleProgram_fromFragmentLib(sp)
+		validateOrFail(prog, fmt.Sprintf("invalid program at i=%v\n", i))
+		values, _ := evalProgram(prog)
+		_ = values
+	}
+}
+
+// How does mutation affect PowerOfTwo?
 func runGeneticExperiment() {
 	Library = make(map[Sym]FnCall)
 	addBasiMathLib()

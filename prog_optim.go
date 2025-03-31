@@ -239,23 +239,32 @@ const (
 	ZeroOnlyOnce
 )
 
-func run_basic_program_gen(n int, sp SampleParams) {
-	valuehist := make(map[int]int)
-	for i := range n {
+// We could actually run analysis on values AFTER generating all the programs and decouple
+// these two things. Then have different kinds of analyses on []ValueMap (incl histograms).
+// But this forces us to realize the entire thing in momory! Better to have run_simple_prog
+// just generate programs and eval them continuously, then put them on a chan?
+func run_simple_program_gen(ch chan ValueMap, nprog int, sp SampleParams) {
+	for i := range nprog {
 		prog := sampleProgram_fromFragmentLib(sp)
-		validateOrFail(prog, fmt.Sprintf("Failed creating sample program %v .\n", i))
+		validateOrFail(prog, fmt.Sprintf("invalid program at i=%v\n", i))
 		// print_program(prog, Info)
 		values, _ := evalProgram(prog)
+		ch <- values
+	}
+}
+
+func run_basic_program_gen_value_histogram(nprog int, sp SampleParams) {
+	vh := make(ValueHistogram)
+	for i := range nprog {
+		prog := sampleProgram_fromFragmentLib(sp)
+		validateOrFail(prog, fmt.Sprintf("invalid program at i=%v\n", i))
+		values, _ := evalProgram(prog)
 		for _, v := range values {
-			c, exist := valuehist[v.value.(int)]
-			if !exist {
-				c = 0
-			}
-			valuehist[v.value.(int)] = c + 1
+			vh.add(v.value.(int))
 		}
 	}
-	fmt.Println("ProgLen = ", sp.Program_length, " Value Hist: ", valuehist)
-	saveWiring(sp, n, valuehist)
+	fmt.Println("ProgLen = ", sp.Program_length, " Value Hist: ", vh)
+	// saveWiring(sp, nprog, vh)
 }
 
 func Run_genetic_program_optimization(p GPParams) {

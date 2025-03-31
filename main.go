@@ -22,7 +22,7 @@ func main() {
 		return
 	}
 
-	// runWiringExperiment()
-	runGeneticExperiment()
+	runWiringExperiment()
+	// runGeneticExperiment()
 
 }

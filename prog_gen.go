@@ -86,6 +86,9 @@ func addBasiMathLib() {
 	f = func(a, b int) int { return a * b }
 	addFuncToLibrary(f, "mul", []Type{"int", "int"}, "int")
 
+	f = func(a, b int) int { return a << b }
+	addFuncToLibrary(f, "<<", []Type{"int", "int"}, "int")
+
 	f = func(isPos bool) float64 {
 		x := rand.Float64()
 		if !isPos {
