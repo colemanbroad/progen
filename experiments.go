@@ -53,20 +53,19 @@ func runGeneticExperiment() {
 		// init_maphistory()
 		init_reward()
 		// Init_campaign()
-		p := GPParams{N_rounds: 1000, N_programs: 20, Ltype: Mut}
+		p := GPParams{N_rounds: 1000, N_programs: 20, Ltype: NoMut}
 		Run_genetic_program_optimization(p)
-		saveGenetic()
+		saveGenetic(p)
 	}
 }
 
-func saveGenetic() {
+func saveGenetic(p GPParams) {
 	db := ConnectSqlite(*dbname)
-	var s string
 	var err error
 	campaign_id := generateRandomString(16)
-	s = `create table if not exists history_power_of_two (value real, reward real, time int, campaign_id string)`
-	_, err = db.Exec(s)
-	check(err)
+	// s = `create table if not exists history_power_of_two (value real, reward real, time int, campaign_id string, mut int)`
+	// _, err = db.Exec(s)
+	// check(err)
 	// s = `create table if not exists program_history (prog string, reward real, time int, campaign_id string)`
 	// _, err = db.Exec(s)
 	// check(err)
@@ -75,11 +74,11 @@ func saveGenetic() {
 	// check(err)
 	tx, err := db.Begin()
 	check(err)
-	stmt, err := tx.Prepare("insert into history_power_of_two (value, reward, time, campaign_id) values (?,?,?,?)")
+	stmt, err := tx.Prepare("insert into history_power_of_two (value, reward, time, campaign_id, mut) values (?,?,?,?,?)")
 	check(err)
 	defer stmt.Close()
 	for _, vr := range history_power_of_two {
-		_, err = stmt.Exec(vr.Value, vr.Reward, vr.Time, campaign_id)
+		_, err = stmt.Exec(vr.Value, vr.Reward, vr.Time, campaign_id, p.Ltype)
 		check(err)
 	}
 	err = tx.Commit()
