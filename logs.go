@@ -23,6 +23,7 @@ func init() {
 	err := os.MkdirAll(logdir, os.ModePerm)
 	check(err)
 
+	log.SetFlags(log.Lshortfile)
 	// Get the executable name
 	exeName := os.Args[0]
 
@@ -46,6 +47,7 @@ func init() {
 
 func check(err error) {
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		panic(err)
 	}
 }

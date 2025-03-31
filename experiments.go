@@ -5,12 +5,15 @@ import (
 	// "log"
 )
 
+// Cheating: Do we remove Zero from the Library after line 1 ? Peano Specific.
+// Decay: What is the decay rate in the exponential dist over lines when sampling an input arg.
+// Proglen: Program length
 func runWiringExperiment() {
 	Library = make(map[Sym]FnCall)
 	addPeanoLib()
-	for _, c := range []Cheating{Normal, ZeroOnlyOnce} {
+	for _, c := range []Cheating{NoCheating, ZeroOnlyOnce} {
 		for _, decay := range []float64{0.1, 1.0, 0.0} {
-			for _, i := range []int{1, 2, 5, 10} {
+			for _, proglen := range []int{10, 20, 50, 100} {
 				cheating = Cheating(c)
 				sp := newSampleParams()
 				sp.Wire_nearby = true
@@ -18,7 +21,7 @@ func runWiringExperiment() {
 					sp.Wire_nearby = false
 				}
 				sp.WireDecayLen = decay
-				sp.Program_length = 10 * i
+				sp.Program_length = proglen
 				fmt.Println("Begin wiring: ", sp)
 				run_basic_program_gen_value_histogram(1000, sp)
 			}
@@ -43,37 +46,69 @@ func saveWiring(sp SampleParams, nprog int, valuehist map[int]int) {
 	}
 }
 
-type ValueHistogram map[int]int
-
-func (h ValueHistogram) add(val int) {
-	c, exist := h[val]
-	if !exist {
-		c = 0
+// How does deeper wiring affect the Powers of Two distribution?
+func runP2() {
+	Library = make(map[Sym]FnCall)
+	addBasicMathLib()
+	addPowerOfTwo()
+	for _, proglen := range []int{100} {
+		for _, decay := range []float64{0.1, 1.0, 0.0} {
+			sp := newSampleParams()
+			sp.Wire_nearby = true
+			if decay == 0.0 {
+				sp.Wire_nearby = false
+			}
+			sp.WireDecayLen = decay
+			sp.Program_length = proglen
+			fmt.Println("Begin wiring: ", sp)
+			init_history()
+			init_reward()
+			global_time = 0
+			for range 1000 {
+				// fmt.Println("i = ", i)
+				prog := sampleProgram(sp)
+				_, _ = evalProgram(prog)
+				global_time += 1
+			}
+			saveP2(sp)
+		}
 	}
-	h[val] = c + 1
 }
 
-// How does deeper wiring affect the Powers of Two distribution?
-func runWirePowOfTwoExperiment() {
-	Library = make(map[Sym]FnCall)
-	addBasiMathLib()
-	addPowerOfTwo()
-	// ch := make(chan ValueMap)
-	for i := range 20 {
-		init_history()
-		init_reward()
-		sp := newSampleParams()
-		prog := sampleProgram_fromFragmentLib(sp)
-		validateOrFail(prog, fmt.Sprintf("invalid program at i=%v\n", i))
-		values, _ := evalProgram(prog)
-		_ = values
+func saveP2(sp SampleParams) {
+	db := ConnectSqlite(*dbname)
+	defer db.Close()
+	var err error
+	var s string
+	campaign_id := generateRandomString(16)
+	s = `create table if not exists wire_pow_of_two (value real, reward real, time int, campaign_id string, proglen int, decay float)`
+	_, err = db.Exec(s)
+	check(err)
+	// s = `create table if not exists program_history (prog string, reward real, time int, campaign_id string)`
+	// _, err = db.Exec(s)
+	// check(err)
+	// s = `create table if not exists campaigns (campaign_id string, dtime datetime, n_iter int, ltype int)`
+	// _, err = db.Exec(s)
+	// check(err)
+	tx, err := db.Begin()
+	check(err)
+	s = "insert into wire_pow_of_two (value, reward, time, campaign_id, proglen, decay) values (?,?,?,?,?,?)"
+	stmt, err := tx.Prepare(s)
+	check(err)
+	defer stmt.Close()
+	for _, vr := range history_power_of_two {
+		// fmt.Println("saving vr", vr)
+		_, err = stmt.Exec(vr.Value, vr.Reward, vr.Time, campaign_id, sp.Program_length, sp.WireDecayLen)
+		check(err)
 	}
+	err = tx.Commit()
+	check(err)
 }
 
 // How does mutation affect PowerOfTwo?
 func runGeneticExperiment() {
 	Library = make(map[Sym]FnCall)
-	addBasiMathLib()
+	addBasicMathLib()
 	addPowerOfTwo()
 	for range 20 {
 		init_history()
@@ -88,7 +123,9 @@ func runGeneticExperiment() {
 
 func saveGenetic(p GPParams) {
 	db := ConnectSqlite(*dbname)
+	defer db.Close()
 	var err error
+	var s string
 	campaign_id := generateRandomString(16)
 	// s = `create table if not exists history_power_of_two (value real, reward real, time int, campaign_id string, mut int)`
 	// _, err = db.Exec(s)
@@ -101,7 +138,8 @@ func saveGenetic(p GPParams) {
 	// check(err)
 	tx, err := db.Begin()
 	check(err)
-	stmt, err := tx.Prepare("insert into history_power_of_two (value, reward, time, campaign_id, mut) values (?,?,?,?,?)")
+	s = "insert into history_power_of_two (value, reward, time, campaign_id, mut) values (?,?,?,?,?)"
+	stmt, err := tx.Prepare(s)
 	check(err)
 	defer stmt.Close()
 	for _, vr := range history_power_of_two {

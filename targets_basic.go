@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 )
 
@@ -49,6 +50,15 @@ func isPowerOfTwo(n int) bool {
 		is_power = true
 	}
 	history_power_of_two = append(history_power_of_two, Reward_power_of_two{Value: float32(n), Reward: float32(r), Time: global_time})
+	fmt.Println("pow2 ", n, d, is_power)
 
 	return is_power
+}
+
+func addPeanoLib() {
+	var f any
+	f = func(a int) int { return a + 1 }
+	addFuncToLibrary(f, "succ", []Type{"int"}, "int")
+	f = func() int { return 0 }
+	addFuncToLibrary(f, "zero", []Type{}, "int")
 }

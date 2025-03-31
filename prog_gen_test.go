@@ -47,7 +47,7 @@ func Test_BasicPrgramGen(t *testing.T) {
 		if rand.Float32() < 0.5 {
 			sp.Wire_nearby = !sp.Wire_nearby
 		}
-		p1 := UncheckedProgram(sampleProgram_fromFragmentLib(sp))
+		p1 := UncheckedProgram(sampleProgram(sp))
 		program := Program(p1)
 		valmap, r_delta := evalProgram(program)
 		_, _ = valmap, r_delta

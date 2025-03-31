@@ -234,7 +234,7 @@ var (
 type Cheating = int
 
 const (
-	Normal Cheating = iota
+	NoCheating Cheating = iota
 	ZeroValue
 	ZeroOnlyOnce
 )
@@ -245,7 +245,7 @@ const (
 // just generate programs and eval them continuously, then put them on a chan?
 func run_simple_program_gen(ch chan ValueMap, nprog int, sp SampleParams) {
 	for i := range nprog {
-		prog := sampleProgram_fromFragmentLib(sp)
+		prog := sampleProgram(sp)
 		validateOrFail(prog, fmt.Sprintf("invalid program at i=%v\n", i))
 		// print_program(prog, Info)
 		values, _ := evalProgram(prog)
@@ -253,10 +253,20 @@ func run_simple_program_gen(ch chan ValueMap, nprog int, sp SampleParams) {
 	}
 }
 
+type ValueHistogram map[int]int
+
+func (h ValueHistogram) add(val int) {
+	c, exist := h[val]
+	if !exist {
+		c = 0
+	}
+	h[val] = c + 1
+}
+
 func run_basic_program_gen_value_histogram(nprog int, sp SampleParams) {
 	vh := make(ValueHistogram)
 	for i := range nprog {
-		prog := sampleProgram_fromFragmentLib(sp)
+		prog := sampleProgram(sp)
 		validateOrFail(prog, fmt.Sprintf("invalid program at i=%v\n", i))
 		values, _ := evalProgram(prog)
 		for _, v := range values {
@@ -276,7 +286,7 @@ func Run_genetic_program_optimization(p GPParams) {
 
 	// initialize programs
 	for i := range p.N_programs {
-		prog := sampleProgram_fromFragmentLib(newSampleParams())
+		prog := sampleProgram(newSampleParams())
 		validateOrFail(prog, fmt.Sprintf("Failed creating sample program %v .\n", i))
 		programs[i] = prog
 	}
@@ -316,7 +326,7 @@ func Run_genetic_program_optimization(p GPParams) {
 			case 1:
 				new_programs[k] = mutate_program(best_programs[n], best_programs)
 			case 2:
-				new_programs[k] = sampleProgram_fromFragmentLib(newSampleParams())
+				new_programs[k] = sampleProgram(newSampleParams())
 			}
 		}
 
@@ -370,13 +380,13 @@ func mutate_program(p Program, best_programs []Program) Program {
 	switch {
 	case r < 0.1:
 		// fmt.Println("sampleProgram_fromFragmentLib")
-		return sampleProgram_fromFragmentLib(newSampleParams())
+		return sampleProgram(newSampleParams())
 	case r < 0.2:
 		// fmt.Println("reshuffle")
 		return reshuffle(p)
 	case r < 0.3:
 		// fmt.Println("point_mutate")
-		pnew, _ := point_mutate(p)
+		pnew, _ := PointMutate(p)
 		return pnew
 	case r < 0.4:
 		// fmt.Println("rewire")
@@ -398,7 +408,7 @@ func mutate_program(p Program, best_programs []Program) Program {
 }
 
 // Replace a FnCall in Program with one from Library with matching rtype and ptypes.
-func point_mutate(prog_ Program) (Program, bool) {
+func PointMutate(prog_ Program) (Program, bool) {
 	libinv := buildLibraryInverse()
 	replaceables := make(map[int]*Set[Sym])
 	prog := CopyProgram(prog_) // TODO: does this reassign the pointer? I think yes.

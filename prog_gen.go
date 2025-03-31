@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"reflect"
@@ -50,71 +51,14 @@ const (
 
 var Library map[Sym]FnCall
 
-// func init_library() {
-
-// 	// functions
-// 	Library = make(map[Sym]FnCall)
-// 	addPeanoLib()
-
-// 	addPowerOfTwo()
-// 	// add_pitsworld()
-// 	// basiMathLib()
-
-// 	// f = func() string { return fmt.Sprint(rand.Intn(10)) }
-// 	// addFn(f, "rand_s", []Type{}, "string")
-
-// 	// f = func(a string) string { return a + a }
-// 	// addFn(f, "repeat", []Type{"string"}, "string")
-
-// 	// f = func(a, b string) string { return a + b }
-// 	// addFn(f, "cat", []Type{"string", "string"}, "string")
-
-// }
-
-func addBasiMathLib() {
-	var f any
-
-	f = func() int { return rand.Intn(10) }
-	addFuncToLibrary(f, "rand", []Type{}, "int")
-
-	f = func() int { return 1 }
-	addFuncToLibrary(f, "one", []Type{}, "int")
-
-	f = func(a, b int) int { return a + b }
-	addFuncToLibrary(f, "add", []Type{"int", "int"}, "int")
-
-	f = func(a, b int) int { return a * b }
-	addFuncToLibrary(f, "mul", []Type{"int", "int"}, "int")
-
-	f = func(a, b int) int { return a << b }
-	addFuncToLibrary(f, "<<", []Type{"int", "int"}, "int")
-
-	f = func(isPos bool) float64 {
-		x := rand.Float64()
-		if !isPos {
-			x *= -1
-		}
-		return x
-	}
-	addFuncToLibrary(f, "samplePosOrNeg", []Type{"bool"}, "f64")
-}
-
-func addPeanoLib() {
-	var f any
-	f = func(a int) int { return a + 1 }
-	addFuncToLibrary(f, "succ", []Type{"int"}, "int")
-	f = func() int { return 0 }
-	addFuncToLibrary(f, "zero", []Type{}, "int")
-}
-
 func evalStatement(stmt Statement, locals ValueMap) {
 	var r any
-	var f any
+	// var f any
+	// f = stmt.fn.value
 	// type erase the function we're calling
-	f = stmt.fn.value
-	g := reflect.ValueOf(f)
+	g := reflect.ValueOf(stmt.fn.value)
 
-	// then erase the args, (but haven't they arleady been erased?)
+	// then erase the args, (Q: but haven't they arleady been erased?)
 	// TODO: avoid alloc: make this fix-size array?
 	args := make([]reflect.Value, 0)
 	for _, a := range stmt.argsyms {
@@ -123,12 +67,14 @@ func evalStatement(stmt Statement, locals ValueMap) {
 
 	// fmt.Println("f, g, args", f, g, args)
 	// printProgram(Program{stmt}, Info)
-	// return val cast to `any` type
+
+	// return val cast to `any` type aka Interface()
 	r = g.Call(args)[0].Interface()
 
-	// Check that the types are correct
-	// Here's where we can introduce the logic of "any" types?
+	// Here's where we can introduce the logic of "any" types? generic types?
 	rtype := Type(reflect.TypeOf(r).Name())
+
+	// Check that the types are correct
 	// if rtype != stmt.fn.rtype {
 	// 	ErrorLog.Fatalf("Val type doesn't match fn rtype: %v %v", rtype, stmt.fn.rtype)
 	// }
@@ -180,6 +126,9 @@ func sampleFuncFromLibrary() FnCall {
 	for k := range Library {
 		keys = append(keys, k)
 	}
+	if len(keys) == 0 {
+		log.Fatalln("error: did you forget to add fragments to the library?")
+	}
 	k := keys[rand.Intn(len(keys))]
 	return Library[k]
 }
@@ -201,7 +150,7 @@ func newSampleParams() SampleParams {
 // Then generating a program is easier if we keep track of the
 // values we will have at our disposal at every point.
 // i.e. add lines conditional on what's already in the program.
-func sampleProgram_fromFragmentLib(sp SampleParams) Program {
+func sampleProgram(sp SampleParams) Program {
 	gensym := GenSym{idx: 0}
 	program := make(Program, 0)
 
@@ -218,7 +167,7 @@ stmtLoop:
 		// print_program(program, Info)
 		var f FnCall
 		switch cheating {
-		case Normal:
+		case NoCheating:
 			f = sampleFuncFromLibrary()
 		case ZeroValue:
 			m := len(program)

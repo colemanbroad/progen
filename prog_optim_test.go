@@ -5,8 +5,9 @@ import (
 	"testing"
 )
 
-func Test_reshuffle(t *testing.T) {
-	prog := sampleProgram_fromFragmentLib(newSampleParams())
+func TestReshuffle(t *testing.T) {
+	initPeanoLibrary()
+	prog := sampleProgram(newSampleParams())
 	prog_mutated := reshuffle(prog)
 	// prog_mutated := point_mutate(prog)
 	// assert that sometimes prog != prog_mutated?
@@ -17,7 +18,7 @@ func Test_reshuffle(t *testing.T) {
 	tassert(s1.Difference(s2).Size() == 0, func() { t.Error("Reshuffling should't change (multi)set of FnCalls") })
 
 	// p1, p2 := formatProgram(prog), formatProgram(prog_mutated)
-	// log.Println("Test_mutate", p1, p2)
+	// log.Println("TestMutate", p1, p2)
 
 	// for i := range prog {
 	// 	log.Println(prog[i])
@@ -32,33 +33,42 @@ func Test_reshuffle(t *testing.T) {
 // 	f.Fuzz(t_point_mutate)
 // }
 
-func Test_basicgen(t *testing.T) {
+func initPeanoLibrary() {
+	Library = make(map[Sym]FnCall)
+	addPeanoLib()
+}
+
+func ExamplesampleProgram() {
+	initPeanoLibrary()
 	for range 1000 {
-		p := sampleProgram_fromFragmentLib(newSampleParams())
+		p := sampleProgram(newSampleParams())
 		validateOrFail(p, "sampled direct")
 	}
 }
 
-func Test_basicgen_shuffle(t *testing.T) {
-	for range 10 {
-		p := sampleProgram_fromFragmentLib(newSampleParams())
+func Examplereshuffle() {
+	initPeanoLibrary()
+	for range 1000 {
+		p := sampleProgram(newSampleParams())
 		p = reshuffle(p)
 		validateOrFail(p, "reshuffled")
 	}
 }
 
-func Test_basicgen_pointmut(t *testing.T) {
+func ExamplePointMutate() {
+	initPeanoLibrary()
 	for range 1000 {
-		p := sampleProgram_fromFragmentLib(newSampleParams())
-		p, _ = point_mutate(p)
+		p := sampleProgram(newSampleParams())
+		p, _ = PointMutate(p)
 		validateOrFail(p, "mutated")
 	}
 }
 
-func Test_basicgen_rewire(t *testing.T) {
+func TestBasicgenRewire(t *testing.T) {
+	initPeanoLibrary()
 	hadSuccess, hadFailure := false, false // tracks whether we achieved True and False returns (sometimes each)
 	for range 1000 {
-		p := sampleProgram_fromFragmentLib(newSampleParams())
+		p := sampleProgram(newSampleParams())
 		p, isSuccess := rewire_base(p)
 		hadSuccess = hadSuccess || isSuccess
 		hadFailure = hadFailure || !isSuccess
@@ -72,8 +82,9 @@ func Test_basicgen_rewire(t *testing.T) {
 	}
 }
 
-func Test_basicgen_combo(t *testing.T) {
-	p := sampleProgram_fromFragmentLib(newSampleParams())
+func TestBasicgenCombo(t *testing.T) {
+	initPeanoLibrary()
+	p := sampleProgram(newSampleParams())
 	for range 1000 {
 		x := rand.Float32()
 		switch {
@@ -81,7 +92,7 @@ func Test_basicgen_combo(t *testing.T) {
 			p = reshuffle(p)
 			panic_if_invalid(p)
 		case x < 0.6:
-			p, _ = point_mutate(p)
+			p, _ = PointMutate(p)
 			panic_if_invalid(p)
 		case x < 0.9:
 			p, _ = rewire_base(p)

@@ -9,8 +9,8 @@ func tassert(b bool, fn func()) {
 }
 
 func t_point_mutate(t *testing.T, seed int) {
-	prog := sampleProgram_fromFragmentLib(newSampleParams())
-	prog_mutated, isNew := point_mutate(prog)
+	prog := sampleProgram(newSampleParams())
+	prog_mutated, isNew := PointMutate(prog)
 	tassert(len(prog) == len(prog_mutated), func() { t.Error("Mutated Programs not same length.") })
 	s1 := getCallSyms(prog)
 	s2 := getCallSyms(prog_mutated)
