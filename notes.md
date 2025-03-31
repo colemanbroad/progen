@@ -25,32 +25,6 @@ Apache e-charts has tons on nice effects but is a charting embarrassment
 -[ ] fuzz a single pitsworld map instead of generating new ones randomly?
 
 
-# Plotting
-
-Layout. We need to know which part of the screen is free
-and which part is available, and how big the proposed addition
-is. 
-One idea is to have a PlotManager that controls where individual drawing functions run. 
-There are really three important locations in code where we could control the plot size.
-1. `func run(ctx *canvas.Context)` actually calls drawing code
-2. main() where we create PlotManager and call add_plot
-3. Inside plot_manager.go where we have the logic of how plots are added and combined. It manages screen real estate.
-Probably the only appropriate thing to do make the sizes dynamically controlled by dragging / clicking at runtime.
-
-It's easy to control the size, but we want the manager to control the location! It has to do some rectangle packing algorithm...
-
-```go
-// w,h are the total width, height allowed for the Canvas
-func new_plot_manager(w,h int) PlotManager
-// add a plot to the PlotManager. The plot specifies a width/height.
-func (*PlotManager) add_plot(run func(* canvas.Context), w,h int)
-
-```
-
----
-
-init() start plotting server if it hasn't been started yet
-    
 # Tips
 
 profile you running program with:
@@ -58,119 +32,10 @@ profile you running program with:
 to profile the CPU for 10s and then view the results in a web view.
 
 
-# Plotting 
-
-
-How should we refactor this thing?
-I think the easiest entrypoint is to have a couple of generic funcs to 
-1. draw axes
-2. do the event loop given a callback `func(*canvas.Context)` that we can pass.
-3. we can draw the axes 
-
-```go
-// puts f insde an infloop with a sleep(p)
-register_plotfn(f func(*canvas.Context), p time.Time)
-// draw the axes with labels at screen coordinates x0,y0
-draw_axes(ctx *canvas.Context, x_label, y_label, x0, y0, xn, yn)
-```
-
----
-
-First, distinguish between the cases where
-1. all the data is available immediately, barring some processing.
-2. the data makes it self available piece by piece, potentially even in a way that depends on your code.
-
-Case (2) covers both streaming data when we are a dumb pipe getting data from a 3rd party
-and the case where we are an agent discovering or creating data of our own. The agent case
-is also the case covering profiling, tracing, and observability of long-lived software. 
-Long-lived software like a server vs short-lived software like a compiler. Short-lived 
-software starts, runs, and stops. There is a before and an after. Long-lived software
-may never stop, or may only stop very briefly to get the tires changed. Short-lived 
-software can change while it's down. Long-lived software may need to change while it's 
-running! Long-lived software needs to be continuously monitored, and may require constant
-input or control from the outside.
-
----
-
-For structured logging we could dynamically create a new table for each logging statement?
-Or we could log everything to stdout and do post-hoc grouping into tables.
-What if the software changes? How do we know that two logging statements are equivalent 
-before and after the change?  
-
-Structured logging is compatible with streaming data and observability.
-For starters we need a system that can group a structured steam into multiple tables, 
-and that can plot. 
-
-Plotting dispatch by type?
-
-In order to achieve continuous renormalization of the plotting window we need to keep all 
-the plotted data alive, even in streaming APIs. This allows us to continuously recompute
-stats like min and max, recompute the affine transform between chart and screen coordinates,
-and then apply this transformation to all datapoints.
-
-It may be possible to keep this data alive on the backend s.t. the frontend doesn't force
-pure code to become stateful by keeping data around. Indeed, this is the point of logging!
-
-1. keep this data in mem, interleave different row types.
-2. keep this data in mem, each row type gets it's own ArrayOfStructs. 
-
-```go
-
-func plot(data ...any) Plot {
-    // dispatch to plot(x,y,z int)
-}
-
-```
-
-For observability we have one interface: `log(name string, vars ...any)`.
-Any plotting is downstream of this interface.
-Maybe `log(...)` is replaced with `assert.sometimes_each(...)` ?
-`sometimes_each` is less an  
-
-1. always assertions can be disproven with an example `equal, greater_than, less_than, ...`
-2. sometimes assertions can be proven with an example `equal, greater_than, less_than, ...`
-3. assert.each(b bool) is proven true is we see both True and False? is this sometimes_each? 
-    This assertion will never pass for more complex values like u64.
-    `sometimes_each()` can't be proven or disproven with a single example. It requires multiple 
-    examples to prove. 
-4. 
-
-We can either go directly from  
-
----
-
-At the moment my plots are based on DiIntervals which are paired to form Rectangles.
-It might be better to store Points and pairs of points then form Rect from points.
-An affine transformation would then only work on rectangles, not intervals... unless 
-we specify `affine(x in [-inf,inf], p0, p1 Point)` and x then falls somewhere on the line
-determined by p0,p1 ? This also allows us to add Points, and transform them with linear algebra.
-
----
-
-The more I think about basing everything on Vec2 the better it seems. So easy to compute
-midpoints, percentage, linear combinations. And Rect just becomes a pair of points...
-
-IDEA:
-The plot object should determine the data locations of x,y-ticks, the figure fraction location
-of axes
-
----
-
-HOW TO DO AXES TICKS?
-- give precise control of formatting to user.
-    - tick locations and labels are determined from axes sizes (pixels) and data range
-    - user provides a format string for labels. locations are determined as above.
-    - user provides tick locations (data units) and string labels
-        - this is done in an Axes struct type, which is created with reasonable defaults from figure Box and data min/max.
-    - user draws axes
-
----
-
 # Todo
 
 -[ ] optimizer
 -[ ] wordle
--[ ] more plots (1d distributions, violin plots, swarmplots) 
 
 # Program Gen
 
@@ -394,41 +259,12 @@ But also, [Go is my hammer](https://news.ycombinator.com/item?id=41223902).
 
 # Relevant Work
 
-Plotting tools 
-
-- https://pkg.go.dev/github.com/ajstarks/svgo
-- go-gg
-- benchplot
-- https://pkg.go.dev/modernc.org/plot
-- [hn plotters](https://hn.algolia.com/?q=plotting)
-- [Go interpreter for codegen eval](https://github.com/traefik/yaegi)
-
 Program Synthesis
 https://cs.nyu.edu/~davise/
 https://cs.nyu.edu/~davise/rck/intro.pdf
 https://deoxyribose.github.io/No-Shortcuts-to-Knowledge/#learning-as-probabilistic-program-synthesis
 https://evanthebouncy.github.io/program-synthesis-minimal/
 https://www.reddit.com/r/MachineLearning/comments/y378kk/p_a_minimalist_guide_to_program_synthesis/
-
-# Idea: Markdown Viewer 
-
-Combine sqlpeeker with a Markdown Renderer. Add syntax to the Markdown to speicfy Queries and PlotConfig. Generate and inline plots.
-Cache for SQL queries after loading table to memory and after rendering! rendering should be done in go process.
-
-
-
-
-# Todo
-
--[ ] interactivity
--[ ] deal with inf and div-by-zero
--[ ] deal with facet_row display size
--[ ] Better visuals and debugging. JSON to browser vs text to logfile? JSON to file can be parsed.
--[ ] plot color with bool column types
--[x] facet labels
--[ ] legend and colormap/colorbar... 
--[ ] 
-
 
 # Go testing and sometimes assertions
 
@@ -529,32 +365,6 @@ I want to see how the wiring mode and learning affect Reward trajectories.
 I want to be able to run a large number of trials, looping over hyperparams.
 This will require full control of init() time.
 
-
-# Mysterious Behaviour
-
-Files suddenly disappear.
-Files change out from under me.
-Changes are lost.
-
-- -- --- -- - - -- --- -- - - -- --- -- - - -- --- -- - - -- --- -- - - -- --- -- -
-
-Mar 28 2025
-
-I'm actually able to use sqlpeeker for plotting! I couldn't get python to install locally, so I ran sqlpeeker and it
-worked immediately! The plots even look nicer than plotly, probably because (a) the legend is discrete (b) the plot is
-pure white background default with minimal black ticks  (c) the facet headings and yaxis labels are not rotated 90deg
-vertical text (d) the dots have a thin black border that helps them pop and makes them easy to distinguish even when
-partially overlapping. Differences that aren't obvious wins: (e) the y labels are not nice round numbers... but they
-do show the min and max!  (f) The x and y axes scale to fit the data per-facet, not across the entire plot. This makes
-it easier to see patterns by expanding the data, but makes it harder to compare across facets. (g) The facet titles
-actually overlap the data! This is a bug. (h) The legend is way off down at the bottom. (i) The facet titles not only
-overlap the data but they are easily confused with the shared x label! (j) The x-label is shared but the actual x axes
-are independently scaled!
-
--[ ] Darkmode for SQLPeeker
-
-I'm getting "no such function: log" and crashing sqlpeek when I know that the same query works directly in sqlite... We probably want
-to not crash here but print a warning.
 
 # Wiring Experiment 001
 
