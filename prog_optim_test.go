@@ -34,11 +34,11 @@ func TestReshuffle(t *testing.T) {
 // }
 
 func initPeanoLibrary() {
-	Library = make(map[Sym]FnCall)
+	fn_library = make(map[Sym]FnCall)
 	addPeanoLib()
 }
 
-func ExamplesampleProgram() {
+func TestSampleProgramLong(t *testing.T) {
 	initPeanoLibrary()
 	for range 1000 {
 		p := sampleProgram(newSampleParams())
@@ -46,7 +46,7 @@ func ExamplesampleProgram() {
 	}
 }
 
-func Examplereshuffle() {
+func TestReshuffleLong(t *testing.T) {
 	initPeanoLibrary()
 	for range 1000 {
 		p := sampleProgram(newSampleParams())
@@ -55,7 +55,7 @@ func Examplereshuffle() {
 	}
 }
 
-func ExamplePointMutate() {
+func TestPointMutateLong(t *testing.T) {
 	initPeanoLibrary()
 	for range 1000 {
 		p := sampleProgram(newSampleParams())
@@ -64,7 +64,7 @@ func ExamplePointMutate() {
 	}
 }
 
-func TestBasicgenRewire(t *testing.T) {
+func TestBasicgenRewireLong(t *testing.T) {
 	initPeanoLibrary()
 	hadSuccess, hadFailure := false, false // tracks whether we achieved True and False returns (sometimes each)
 	for range 1000 {
@@ -82,7 +82,7 @@ func TestBasicgenRewire(t *testing.T) {
 	}
 }
 
-func TestBasicgenCombo(t *testing.T) {
+func TestBasicgenComboLong(t *testing.T) {
 	initPeanoLibrary()
 	p := sampleProgram(newSampleParams())
 	for range 1000 {

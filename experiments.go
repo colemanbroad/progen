@@ -5,16 +5,41 @@ import (
 	// "log"
 )
 
+func initWire() {
+	fn_library = make(map[Sym]FnCall)
+	addPeanoLib()
+	if cheating == ZeroOnlyOnce {
+		// NOTE: explicit make() init not needed for program_prefix?
+		program_prefix = Program{Statement{
+			fn: FnCall{
+				value:  func() int { return 0 },
+				name:   "LitZero",
+				ptypes: []Type{},
+				rtype:  "int",
+			},
+			outsym:  "symzero",
+			argsyms: []Sym{},
+		}}
+		delete(fn_library, "zero")
+		// PROBLEM: if we remove Zero from fn_lib here then it won't be available when we need to eval the program later!
+		// So... this method doesn't work. We could have a generic "filter library syms" function that is applied during
+		// sampleProgram... But this will not work. We could use a Progen style Litnum here?! OK, let's try that!
+	} else if cheating == ZeroValue {
+		value_library = make(map[Sym]Value)
+		addPeanoValueLib()
+		delete(fn_library, "zero")
+	}
+}
+
 // Cheating: Do we remove Zero from the Library after line 1 ? Peano Specific.
 // Decay: What is the decay rate in the exponential dist over lines when sampling an input arg.
 // Proglen: Program length
 func runWire() {
-	Library = make(map[Sym]FnCall)
-	addPeanoLib()
 	for _, c := range []Cheating{ZeroValue} {
 		for _, decay := range []float64{0.1, 1.0, 0.0} {
 			for _, proglen := range []int{10, 20, 50, 100} {
 				cheating = Cheating(c)
+				initWire()
 				sp := newSampleParams()
 				sp.Wire_nearby = true
 				if decay == 0.0 {
@@ -23,15 +48,15 @@ func runWire() {
 				sp.WireDecayLen = decay
 				sp.Program_length = proglen
 				fmt.Println("Begin wiring: ", sp)
-				wire_inner(1000, sp)
+				wire_inner(1, sp)
 			}
 		}
 	}
 }
 
-type ValueHistogram map[int]int
+type IntHistogram map[int]int
 
-func (h ValueHistogram) add(val int) {
+func (h IntHistogram) add(val int) {
 	c, exist := h[val]
 	if !exist {
 		c = 0
@@ -40,10 +65,11 @@ func (h ValueHistogram) add(val int) {
 }
 
 func wire_inner(nprog int, sp SampleParams) {
-	vh := make(ValueHistogram)
+	vh := make(IntHistogram)
 	for range nprog {
 		prog := sampleProgram(sp)
 		values, _ := evalProgram(prog)
+		printProgramAndValues(prog, values)
 		for _, v := range values {
 			vh.add(v.value.(int))
 		}
@@ -93,11 +119,11 @@ func updateDepthToValues(depth2values map[int]*Set[int], prog Program, vals Valu
 
 // How does deeper wiring affect the Powers of Two distribution?
 func runP2() {
-	Library = make(map[Sym]FnCall)
+	fn_library = make(map[Sym]FnCall)
 	addBasicMathLib()
-	addPowerOfTwo()
+	// addPowerOfTwo()
 	for _, proglen := range []int{100} {
-		for _, decay := range []float64{0.1, 1.0, 0.0} {
+		for _, decay := range []float64{0.0, 0.1, 1.0} {
 			sp := newSampleParams()
 			sp.Wire_nearby = true
 			if decay == 0.0 {
@@ -173,7 +199,7 @@ func saveP2(sp SampleParams) {
 
 // How does mutation affect PowerOfTwo?
 func runGeneticExperiment() {
-	Library = make(map[Sym]FnCall)
+	fn_library = make(map[Sym]FnCall)
 	addBasicMathLib()
 	addPowerOfTwo()
 	for range 20 {

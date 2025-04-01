@@ -487,3 +487,18 @@ What should I do with it?
 
     If I have a depthmap AND valuemap I can aggregate them. What is the number of distinct
     values available as a function of program depth?  
+
+Ok the results are in... The fraction of unique value increases monotonically with depth. The count of total unique values increases to a point, then decreases again.
+The total depth distribution decays exponentially in each case: Flat sampling, exponential rate 0.1, exponential rate 1.0.
+1000 programs length 100, and the depth 100. The tail of the exponential is greatly extended by changing the decay rate! 
+Why does it work here but not for the Peano system?
+I think because the Peano system had *half* of it's fragments (Zero / succ) would reset the depth to zero. If we build programs naively and we're interested in depth then we're going to be constantly running into the issue that the depth is reset to zero on every line with 50% probability. We can fix this by:
+
+- removing Zero from Library and 
+    - either 
+        - adding it as the first line of the program [p(zero) = 1/n_lines]
+        - adding it as a Value
+
+- We can have a set of Values in the same way that we currently have a Library.
+- Values live in the ValueLib map[Sym]Value and the Sym keys can be used as _arguments_ to FnCalls directly, without first being added to the program body as an outsym. 
+

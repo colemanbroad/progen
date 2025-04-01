@@ -52,7 +52,9 @@ const (
 	Errr
 )
 
-var Library map[Sym]FnCall
+var fn_library map[Sym]FnCall
+var value_library map[Sym]Value
+var program_prefix Program // NOTE: when construcing the prefix we must uphold the constraints inherent in Program (vs UncheckedProgram)
 
 func evalStatement(stmt Statement, locals ValueMap) {
 	var r any
@@ -89,21 +91,17 @@ func evalStatement(stmt Statement, locals ValueMap) {
 
 func NewValueMap() map[Sym]Value {
 	locals := make(ValueMap)
-	// TODO: How are we going to allow for ZeroValue in Programs with the same semantics as Values
-	// in Rust GenTactics?
-	if cheating == ZeroValue {
-		locals["Zero"] = Value{
-			value: 0,
-			name:  "Zero",
-			vtype: "int",
-		}
-	}
 	return locals
 }
 
 func evalProgram(program Program) (values ValueMap, reward float64) {
 	r0 := Reward_total
 	locals := NewValueMap()
+	if value_library != nil {
+		for sym, val := range value_library {
+			locals[sym] = val
+		}
+	}
 	for _, stmt := range program {
 		evalStatement(stmt, locals)
 	}
@@ -124,19 +122,20 @@ func addFuncToLibrary(f any, name string, ptypes []Type, rtype Type) {
 		ptypes: ptypes,
 		rtype:  rtype,
 	}
-	Library[Sym(fdef.name)] = fdef
+	fn_library[Sym(fdef.name)] = fdef
 }
 
 func sampleFuncFromLibrary() FnCall {
 	keys := make([]Sym, 0)
-	for k := range Library {
+	// fmt.Println("fn_library = ", fn_library)
+	for k := range fn_library {
 		keys = append(keys, k)
 	}
 	if len(keys) == 0 {
 		log.Fatalln("error: did you forget to add fragments to the library?")
 	}
 	k := keys[rand.Intn(len(keys))]
-	return Library[k]
+	return fn_library[k]
 }
 
 type SampleParams struct {
@@ -156,26 +155,28 @@ func newSampleParams() SampleParams {
 // Then generating a program is easier if we keep track of the
 // values we will have at our disposal at every point.
 // i.e. add lines conditional on what's already in the program.
+// Depends on globals: fn_library, value_library and program_prefix, but only fn_library must be non-nil.
 func sampleProgram(sp SampleParams) Program {
 	gensym := GenSym{idx: 0}
 	program := make(Program, 0)
-
 	// TODO: use the Catalog with lineno info to have more control over initial wiring
 	local_catalog := NewCatalog()
-	// idx := 0
-	// n := rand.Intn(20)
-	n := sp.Program_length
-	line_no := uint16(0)
-
 	depthmap := make(map[Sym]int)
 
+	if program_prefix != nil {
+		prefix := CopyProgram(program_prefix)
+		for line_no, stmt := range prefix {
+			depthmap[stmt.outsym] = getDepth(depthmap, stmt.argsyms...)
+			local_catalog.add(stmt.outsym, stmt.fn.rtype, uint16(line_no))
+			// gensym.add(stmt.outsym) // TODO: impl this so we can be sure to avoid Sym collisions!
+			program = append(program, stmt)
+		}
+	}
+
 stmtLoop:
-	for len(program) < n {
+	for len(program) < sp.Program_length {
 		var f FnCall
 		f = sampleFuncFromLibrary()
-		if cheating == ZeroOnlyOnce && len(program) > 0 {
-			f = Library["succ"]
-		}
 		stmt := Statement{
 			fn:      f,
 			argsyms: make([]Sym, 0),
@@ -184,8 +185,18 @@ stmtLoop:
 		// sample a random sym of the appropriate type from the Program above for each argument
 		if len(f.ptypes) != 0 {
 			for _, ptype := range f.ptypes {
-				symtypes, exist := local_catalog.syms_inv[ptype]
-				if !exist {
+				symtypes, _ := local_catalog.syms_inv[ptype] // TODO: revert SymLine idea. or add Values as SymLines with Line = -1 ?
+				valuetypes := make([]SymLine, 0)
+				for sym := range value_library {
+					valuetypes = append(valuetypes, SymLine{
+						sym:  sym,
+						line: uint16(len(program)), // FIXME: We don't usually use SymLine with argsyms! There may be consequences!!!
+					})
+				}
+				symtypes = append(valuetypes, symtypes...)
+				// WARN: This is necessary because of exponential sampling. We have to make
+				// an independent decision about what probability to assign to syms from value_library vs the program body.
+				if len(symtypes) == 0 {
 					continue stmtLoop
 				}
 				var n int
@@ -209,8 +220,7 @@ stmtLoop:
 		// fmt.Printf("add() in sampleProgram() sym = %v \n", stmt.outsym)
 		// fmt.Printf("gensym = %v", gensym)
 		depthmap[stmt.outsym] = getDepth(depthmap, stmt.argsyms...)
-		local_catalog.add(stmt.outsym, stmt.fn.rtype, line_no)
-		line_no += 1
+		local_catalog.add(stmt.outsym, stmt.fn.rtype, uint16(len(program))) // WARN: will break when len(prog) >= 2^16
 		program = append(program, stmt)
 	}
 	// fmt.Print(depthmap)
@@ -376,7 +386,7 @@ func buildTypeGraphOneStep(typeset_start *Set[Type]) (typeset *Set[Type], funcse
 	typeset = NewSet[Type]()
 	funcset = NewSet[string]()
 
-	for _, fn := range Library {
+	for _, fn := range fn_library {
 		paramset := NewSet[Type]()
 		for _, ptype := range fn.ptypes {
 			paramset.Add(ptype)
@@ -407,7 +417,7 @@ func shortestFuncPath(path []string, target_func string) []string {
 	typeset := NewSet[Type]()
 	for _, fn_name := range path {
 		fns_path.Add(fn_name)
-		fn := Library[Sym(fn_name)]
+		fn := fn_library[Sym(fn_name)]
 		typeset.Add(fn.rtype)
 	}
 

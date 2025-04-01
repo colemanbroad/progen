@@ -46,7 +46,7 @@ func buildTypeGraph(type_set *Set[Type]) {
 		type_set = NewSet[Type]()
 		func_set := NewSet[string]()
 
-		for _, fn := range Library {
+		for _, fn := range fn_library {
 
 			if all_funcs.Contains(fn.name) {
 				continue
@@ -109,7 +109,7 @@ func buildLibraryInverse() LibraryInverse {
 		requires: make(map[Type]FuncSet),
 	}
 
-	for _, fn := range Library {
+	for _, fn := range fn_library {
 		fset, ok := lib.provides[fn.rtype]
 		if !ok {
 			fset = NewSet[Sym]()
@@ -122,7 +122,7 @@ func buildLibraryInverse() LibraryInverse {
 		lib.provides[fn.rtype] = fset
 	}
 
-	for _, fn := range Library {
+	for _, fn := range fn_library {
 		for _, ptype := range fn.ptypes {
 			fset, ok := lib.requires[ptype]
 			if !ok {

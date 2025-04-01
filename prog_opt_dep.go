@@ -94,7 +94,7 @@ func apply_all_changes(prog UncheckedProgram) UncheckedProgram {
 
 func _paramset(sym Sym) *Set[Type] {
 	paramset := NewSet[Type]()
-	for _, paramtype := range Library[sym].ptypes {
+	for _, paramtype := range fn_library[sym].ptypes {
 		paramset.Add(paramtype)
 	}
 	return paramset

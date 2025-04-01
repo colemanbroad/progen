@@ -3,7 +3,7 @@ package main
 import "testing"
 
 func Test_libinv(t *testing.T) {
-	set_lib := NewSetFromMapKeys(Library)
+	set_lib := NewSetFromMapKeys(fn_library)
 	tassert(set_lib.Size() > 0, func() { t.Error("zero size set_lib") })
 
 	// libinv := buildLibraryInverse()

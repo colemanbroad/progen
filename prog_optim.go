@@ -406,7 +406,7 @@ func PointMutate(prog_ Program) (Program, bool) {
 		// require same ptypes
 		// fmt.Println("rtype: ", prog[i].fn.rtype)
 		for fnsym := range libinv.provides[prog[i].fn.rtype].emap {
-			isEqPTypes := reflect.DeepEqual(prog[i].fn.ptypes, Library[fnsym].ptypes)
+			isEqPTypes := reflect.DeepEqual(prog[i].fn.ptypes, fn_library[fnsym].ptypes)
 			if isEqPTypes {
 				valid_fnset.Add(fnsym)
 			}
@@ -433,7 +433,7 @@ func PointMutate(prog_ Program) (Program, bool) {
 	InfoLog.Printf("Replacing %v with %v at line %v.\n", prog[line].fn.name, newfn, line)
 	newprog := make(Program, len(prog))
 	copy(newprog, prog)
-	newprog[line].fn = Library[newfn]
+	newprog[line].fn = fn_library[newfn]
 
 	validateOrFail(newprog, "Mutation produced invalid program.")
 

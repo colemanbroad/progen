@@ -20,6 +20,9 @@ func TestMain(m *testing.M) {
 	InfoLog.SetOutput(file)
 	ErrorLog.SetOutput(file)
 
+	initPeanoLibrary()
+	addBasicMathLib()
+
 	// Run tests
 	code := m.Run()
 
@@ -28,7 +31,7 @@ func TestMain(m *testing.M) {
 }
 
 func Test_ShortestPath(t *testing.T) {
-	for fn_name := range Library {
+	for fn_name := range fn_library {
 		bestpath := shortestFuncPath(make([]string, 0), string(fn_name))
 		InfoLog.Printf("The best path to %v is: %v", fn_name, bestpath)
 	}
@@ -41,7 +44,7 @@ func Test_TypeGraph_and_LibraryInverse(t *testing.T) {
 	buildTypeGraph(type_set)
 }
 
-func Test_BasicPrgramGen(t *testing.T) {
+func Test_BasicProgramGen(t *testing.T) {
 	for range 100 {
 		sp := newSampleParams()
 		if rand.Float32() < 0.5 {
@@ -76,17 +79,17 @@ func Test_TruncatedExponential(t *testing.T) {
 func Test_BasicProgramEval(t *testing.T) {
 	program := Program{
 		Statement{
-			fn:      Library["one"],
+			fn:      fn_library["one"],
 			outsym:  "v1",
 			argsyms: []Sym{},
 		},
 		Statement{
-			fn:      Library["one"],
+			fn:      fn_library["one"],
 			outsym:  "v2",
 			argsyms: []Sym{},
 		},
 		Statement{
-			fn:      Library["add"],
+			fn:      fn_library["add"],
 			outsym:  "v3",
 			argsyms: []Sym{"v1", "v2"},
 		},
