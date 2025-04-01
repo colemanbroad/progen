@@ -477,4 +477,13 @@ Initial results suggest decay has little to no effect.
 
 
 -[ ] Add full program text parsing + eval (no js syntax. boring syntax).
--[ ] 
+
+# Depthmap
+
+I can create the map during program construction and afterwards.
+What should I do with it?
+- Use it to prefer deeper syms
+- Use it to study how depth relates to diverse values
+
+    If I have a depthmap AND valuemap I can aggregate them. What is the number of distinct
+    values available as a function of program depth?  

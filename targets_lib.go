@@ -1,10 +1,5 @@
 package main
 
-import (
-	"fmt"
-	"math/rand"
-)
-
 // f = func() string { return fmt.Sprint(rand.Intn(10)) }
 // addFn(f, "rand_s", []Type{}, "string")
 
@@ -41,18 +36,17 @@ func addBasicMathLib() {
 	f = func(a, b int) int {
 		c := b % 64
 		c = sign(c) * c
-		fmt.Println(a, b, c)
 		r := a << c
 		return r
 	}
 	addFuncToLibrary(f, "<<", []Type{"int", "int"}, "int")
 
-	f = func(isPos bool) float64 {
-		x := rand.Float64()
-		if !isPos {
-			x *= -1
-		}
-		return x
-	}
-	addFuncToLibrary(f, "samplePosOrNeg", []Type{"bool"}, "f64")
+	// f = func(isPos bool) float64 {
+	// 	x := rand.Float64()
+	// 	if !isPos {
+	// 		x *= -1
+	// 	}
+	// 	return x
+	// }
+	// addFuncToLibrary(f, "samplePosOrNeg", []Type{"bool"}, "f64")
 }

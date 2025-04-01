@@ -70,6 +70,27 @@ func saveWire(sp SampleParams, nprog int, valuehist map[int]int) {
 	}
 }
 
+func updateDepthToValues(depth2values map[int]*Set[int], prog Program, vals ValueMap, depthcount map[int]int) {
+	dm := createDepthmap(prog)
+	for s, val := range vals {
+		depth := dm[s]
+		d, ok := depthcount[depth]
+		if !ok {
+			d = 0
+		}
+		depthcount[depth] = d + 1
+		valset, ok := depth2values[depth]
+		if !ok {
+			valset = NewSet[int]()
+			depth2values[depth] = valset
+		}
+		intval, ok := val.value.(int)
+		if ok {
+			valset.Add(intval)
+		}
+	}
+}
+
 // How does deeper wiring affect the Powers of Two distribution?
 func runP2() {
 	Library = make(map[Sym]FnCall)
@@ -87,17 +108,38 @@ func runP2() {
 			fmt.Println("Begin wiring: ", sp)
 			init_history()
 			init_reward()
+			depth2values := make(map[int]*Set[int])
+			depthcount := make(map[int]int)
 			global_time = 0
 			for range 1000 {
 				// fmt.Println("i = ", i)
 				prog := sampleProgram(sp)
-				_, _ = evalProgram(prog)
+				vals, _ := evalProgram(prog)
+				updateDepthToValues(depth2values, prog, vals, depthcount)
 				global_time += 1
 			}
+			saveDepthStats(depth2values, depthcount)
 			saveP2(sp)
 		}
 	}
 }
+
+func saveDepthStats(d2v map[int]*Set[int], d2c map[int]int) {
+	keys := sortedKeys(d2v)
+	fmt.Println("Depth | Unique | Total | Ratio")
+	for _, depth := range keys {
+		// for depth, depthset := range depth2values {
+		depthset := d2v[depth]
+		total := d2c[depth]
+		fmt.Printf("%v\t%v\t%v\t%v \n", depth, depthset.Size(), total, float32(depthset.Size())/float32(total))
+		// fmt.Println("Depth Count", depth, depthset.Size(), total, float32(depthset.Size())/float32(total))
+	}
+}
+
+// type DepthRow struct {
+// 	depth, unique, total int
+// 	ratio                float32
+// }
 
 func saveP2(sp SampleParams) {
 	db := ConnectSqlite(*dbname)

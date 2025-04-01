@@ -38,3 +38,8 @@ A Value is basically just an any that remembers what Type it thinks it is.
 We can initialize the ValueMap during evalProgram with Values that
 we want to make available to the program, but didn't place in the program body.
 
+No Target interface or Campaign interface. No eval context. No modules. One big namespace.
+No global Logger or threaded, stateful logger. No JSON.
+
+CAN in principle write programs as text, parse and execute them... 
+

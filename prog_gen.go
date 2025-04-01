@@ -167,6 +167,8 @@ func sampleProgram(sp SampleParams) Program {
 	n := sp.Program_length
 	line_no := uint16(0)
 
+	depthmap := make(map[Sym]int)
+
 stmtLoop:
 	for len(program) < n {
 		var f FnCall
@@ -206,11 +208,32 @@ stmtLoop:
 		stmt.outsym = gensym.gen()
 		// fmt.Printf("add() in sampleProgram() sym = %v \n", stmt.outsym)
 		// fmt.Printf("gensym = %v", gensym)
+		depthmap[stmt.outsym] = getDepth(depthmap, stmt.argsyms...)
 		local_catalog.add(stmt.outsym, stmt.fn.rtype, line_no)
 		line_no += 1
 		program = append(program, stmt)
 	}
+	// fmt.Print(depthmap)
 	return program
+}
+
+func createDepthmap(prog Program) (depthmap map[Sym]int) {
+	depthmap = make(map[Sym]int)
+	for _, line := range prog {
+		depthmap[line.outsym] = getDepth(depthmap, line.argsyms...)
+	}
+	return depthmap
+}
+
+func getDepth(depthmap map[Sym]int, args ...Sym) int {
+	depth := 0
+	for _, a := range args {
+		d, ok := depthmap[a]
+		if ok {
+			depth = max(depth, d)
+		}
+	}
+	return depth + 1
 }
 
 // TruncatedExponentialSampler draws a f64 value from an exponential distribution
