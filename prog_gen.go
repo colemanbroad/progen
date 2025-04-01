@@ -8,6 +8,9 @@ import (
 	"reflect"
 )
 
+// TODO: Is the Value type actually necessary? We can just store
+// ValueMap as map[Sym]any... But Value let's us remember what (r)type
+// the value _thinks_ it is! In case of future conflict.
 type Value struct {
 	value any
 	name  string
@@ -72,6 +75,7 @@ func evalStatement(stmt Statement, locals ValueMap) {
 	r = g.Call(args)[0].Interface()
 
 	// Here's where we can introduce the logic of "any" types? generic types?
+	//
 	rtype := Type(reflect.TypeOf(r).Name())
 
 	// Check that the types are correct
@@ -83,8 +87,7 @@ func evalStatement(stmt Statement, locals ValueMap) {
 	locals[stmt.outsym] = val
 }
 
-func evalProgram(program Program) (values ValueMap, reward float64) {
-	r0 := Reward_total
+func NewValueMap() map[Sym]Value {
 	locals := make(ValueMap)
 	// TODO: How are we going to allow for ZeroValue in Programs with the same semantics as Values
 	// in Rust GenTactics?
@@ -95,19 +98,22 @@ func evalProgram(program Program) (values ValueMap, reward float64) {
 			vtype: "int",
 		}
 	}
+	return locals
+}
+
+func evalProgram(program Program) (values ValueMap, reward float64) {
+	r0 := Reward_total
+	locals := NewValueMap()
 	for _, stmt := range program {
 		evalStatement(stmt, locals)
 	}
 	delta := Reward_total - r0
-
 	// if len(history) >= 1 && history[len(history)-1].Value > 1<<20 {
 	// 	fmt.Print("The value produced is too big.\n\n")
 	// 	fmt.Print("The global time is: ", global_time, "\n\n")
-
 	// printProgramAndValues(program, locals)
 	// 	os.Exit(0)
 	// }
-
 	return locals, delta
 }
 
@@ -163,33 +169,10 @@ func sampleProgram(sp SampleParams) Program {
 
 stmtLoop:
 	for len(program) < n {
-		// fmt.Println("Prog = ")
-		// print_program(program, Info)
 		var f FnCall
-		switch cheating {
-		case NoCheating:
-			f = sampleFuncFromLibrary()
-		case ZeroValue:
-			m := len(program)
-			if rand.Float32() < 1.0/float32(m) {
-				stmt := Statement{
-					fn:      Library["succ"],
-					outsym:  gensym.gen(),
-					argsyms: []Sym{"Zero"},
-				}
-				local_catalog.add(stmt.outsym, stmt.fn.rtype, line_no)
-				line_no += 1
-				program = append(program, stmt)
-				continue
-			} else {
-				f = sampleFuncFromLibrary()
-			}
-		case ZeroOnlyOnce:
-			if len(program) > 0 {
-				f = Library["succ"]
-			} else {
-				f = sampleFuncFromLibrary()
-			}
+		f = sampleFuncFromLibrary()
+		if cheating == ZeroOnlyOnce && len(program) > 0 {
+			f = Library["succ"]
 		}
 		stmt := Statement{
 			fn:      f,
@@ -213,7 +196,11 @@ stmtLoop:
 					// idx = idx + 1 // TODO: change the math here to control the wiring
 					n = rand.Intn(len(symtypes))
 				}
-				stmt.argsyms = append(stmt.argsyms, symtypes[n].sym)
+				arg := symtypes[n].sym
+				if cheating == ZeroValue && rand.Float64() < 1.0/(float64(len(program)+1)) {
+					arg = Sym("Zero")
+				}
+				stmt.argsyms = append(stmt.argsyms, arg)
 			}
 		}
 		stmt.outsym = gensym.gen()

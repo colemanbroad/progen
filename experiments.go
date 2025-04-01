@@ -8,10 +8,10 @@ import (
 // Cheating: Do we remove Zero from the Library after line 1 ? Peano Specific.
 // Decay: What is the decay rate in the exponential dist over lines when sampling an input arg.
 // Proglen: Program length
-func runWiringExperiment() {
+func runWire() {
 	Library = make(map[Sym]FnCall)
 	addPeanoLib()
-	for _, c := range []Cheating{NoCheating, ZeroOnlyOnce} {
+	for _, c := range []Cheating{ZeroValue} {
 		for _, decay := range []float64{0.1, 1.0, 0.0} {
 			for _, proglen := range []int{10, 20, 50, 100} {
 				cheating = Cheating(c)
@@ -23,14 +23,38 @@ func runWiringExperiment() {
 				sp.WireDecayLen = decay
 				sp.Program_length = proglen
 				fmt.Println("Begin wiring: ", sp)
-				run_basic_program_gen_value_histogram(1000, sp)
+				wire_inner(1000, sp)
 			}
 		}
 	}
 }
 
-func saveWiring(sp SampleParams, nprog int, valuehist map[int]int) {
-	db := ConnectSqlite("wiring.sqlite")
+type ValueHistogram map[int]int
+
+func (h ValueHistogram) add(val int) {
+	c, exist := h[val]
+	if !exist {
+		c = 0
+	}
+	h[val] = c + 1
+}
+
+func wire_inner(nprog int, sp SampleParams) {
+	vh := make(ValueHistogram)
+	for range nprog {
+		prog := sampleProgram(sp)
+		values, _ := evalProgram(prog)
+		for _, v := range values {
+			vh.add(v.value.(int))
+		}
+	}
+	fmt.Println("ProgLen = ", sp.Program_length, " Value Hist: ", vh)
+	saveWire(sp, nprog, vh)
+}
+
+func saveWire(sp SampleParams, nprog int, valuehist map[int]int) {
+	fmt.Println("saving: ", sp)
+	db := ConnectSqlite(*dbname)
 	defer db.Close()
 	_, err := db.Exec("create table if not exists wiring(prog_l int, wr_decay real, wr_nearby bool, n_prog int, depth int, count int, cheating int)")
 	check(err)

@@ -253,30 +253,6 @@ func run_simple_program_gen(ch chan ValueMap, nprog int, sp SampleParams) {
 	}
 }
 
-type ValueHistogram map[int]int
-
-func (h ValueHistogram) add(val int) {
-	c, exist := h[val]
-	if !exist {
-		c = 0
-	}
-	h[val] = c + 1
-}
-
-func run_basic_program_gen_value_histogram(nprog int, sp SampleParams) {
-	vh := make(ValueHistogram)
-	for i := range nprog {
-		prog := sampleProgram(sp)
-		validateOrFail(prog, fmt.Sprintf("invalid program at i=%v\n", i))
-		values, _ := evalProgram(prog)
-		for _, v := range values {
-			vh.add(v.value.(int))
-		}
-	}
-	fmt.Println("ProgLen = ", sp.Program_length, " Value Hist: ", vh)
-	// saveWiring(sp, nprog, vh)
-}
-
 func Run_genetic_program_optimization(p GPParams) {
 
 	program_history = make([]ProgramHistoryRow, p.N_programs*p.N_rounds)

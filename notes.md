@@ -473,3 +473,8 @@ That led to [bugpoint](https://llvm.org/docs/Bugpoint.html) mentioned by Chris L
 These ran 20 campaigns a GeneticOptimizer of 1000 rounds of 20 programs with different mutations strategies and length ... 
 But now I want to do the standard sampler with depth + power-of-two experiment. 20 campaigns 1000 rounds 20 programs of length 20 (default params).
 
+Initial results suggest decay has little to no effect.
+
+
+-[ ] Add full program text parsing + eval (no js syntax. boring syntax).
+-[ ] 

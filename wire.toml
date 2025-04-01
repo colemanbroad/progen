@@ -1,4 +1,12 @@
 
+# [[plot]]
+# query = """ select * from counthist """
+# [plot.config]
+# x = "depth"
+# y = "count"
+# color = "prog_l"
+# facet_row = "wr_decay"
+
 # prog_l  wr_decay  wr_nearby  n_prog  depth  count  cheating
 [[plot]]
 query = """
