@@ -27,7 +27,8 @@ select distinct decay, proglen, campaign_id from wire_pow_of_two ;
 
 -- unique powers-of-two by campaign
 -- sqlpeek
-with A as ( select distinct campaign_id, log(2, value) lg2val  from wire_pow_of_two ),
+with
+A as ( select distinct campaign_id, log(2, value) lg2val  from wire_pow_of_two ),
 B as ( select *, floor(lg2val)=lg2val isPo2 from A ),
 C as ( select * from B where isPo2 = true),
 D as ( select C.*, P.decay, P.proglen from C join campaignparams P using (campaign_id)),
