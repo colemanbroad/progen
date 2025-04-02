@@ -6,12 +6,12 @@ import (
 )
 
 func initWire() {
-	fn_library = make(map[Sym]FnCall)
+	fn_library = make(map[Sym]Fun)
 	addPeanoLib()
 	if cheating == ZeroOnlyOnce {
 		// NOTE: explicit make() init not needed for program_prefix?
 		program_prefix = Program{Statement{
-			fn: FnCall{
+			fn: Fun{
 				value:  func() int { return 0 },
 				name:   "LitZero",
 				ptypes: []Type{},
@@ -117,9 +117,20 @@ func updateDepthToValues(depth2values map[int]*Set[int], prog Program, vals Valu
 	}
 }
 
+func saveDepthStats(d2v map[int]*Set[int], d2c map[int]int) {
+	keys := sortedKeys(d2v)
+	fmt.Println("Depth | Unique | Total | Ratio")
+	for _, depth := range keys {
+		// for depth, depthset := range depth2values {
+		depthset := d2v[depth]
+		total := d2c[depth]
+		fmt.Printf("%v\t%v\t%v\t%v \n", depth, depthset.Size(), total, float32(depthset.Size())/float32(total))
+	}
+}
+
 // How does deeper wiring affect the Powers of Two distribution?
 func runP2() {
-	fn_library = make(map[Sym]FnCall)
+	fn_library = make(map[Sym]Fun)
 	addBasicMathLib()
 	// addPowerOfTwo()
 	for _, proglen := range []int{100} {
@@ -149,23 +160,6 @@ func runP2() {
 		}
 	}
 }
-
-func saveDepthStats(d2v map[int]*Set[int], d2c map[int]int) {
-	keys := sortedKeys(d2v)
-	fmt.Println("Depth | Unique | Total | Ratio")
-	for _, depth := range keys {
-		// for depth, depthset := range depth2values {
-		depthset := d2v[depth]
-		total := d2c[depth]
-		fmt.Printf("%v\t%v\t%v\t%v \n", depth, depthset.Size(), total, float32(depthset.Size())/float32(total))
-		// fmt.Println("Depth Count", depth, depthset.Size(), total, float32(depthset.Size())/float32(total))
-	}
-}
-
-// type DepthRow struct {
-// 	depth, unique, total int
-// 	ratio                float32
-// }
 
 func saveP2(sp SampleParams) {
 	db := ConnectSqlite(*dbname)
@@ -198,8 +192,8 @@ func saveP2(sp SampleParams) {
 }
 
 // How does mutation affect PowerOfTwo?
-func runGeneticExperiment() {
-	fn_library = make(map[Sym]FnCall)
+func runGenetic() {
+	fn_library = make(map[Sym]Fun)
 	addBasicMathLib()
 	addPowerOfTwo()
 	for range 20 {

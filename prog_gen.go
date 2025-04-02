@@ -17,14 +17,14 @@ type Value struct {
 	vtype Type
 }
 
-type FnCall struct {
+type Fun struct {
 	value  any
 	name   string
 	ptypes []Type
 	rtype  Type
 }
 
-func (fn FnCall) String() string {
+func (fn Fun) String() string {
 	return fmt.Sprintf("Fn {name:%v, ptypes:%v, rtype:%v}", fn.name, fn.ptypes, fn.rtype)
 }
 
@@ -36,7 +36,7 @@ type SymLine struct {
 }
 type SymSet = *Set[Sym]
 type Statement struct {
-	fn      FnCall
+	fn      Fun
 	outsym  Sym
 	argsyms []Sym
 }
@@ -52,7 +52,7 @@ const (
 	Errr
 )
 
-var fn_library map[Sym]FnCall
+var fn_library map[Sym]Fun
 var value_library map[Sym]Value
 var program_prefix Program // NOTE: when construcing the prefix we must uphold the constraints inherent in Program (vs UncheckedProgram)
 
@@ -116,7 +116,7 @@ func evalProgram(program Program) (values ValueMap, reward float64) {
 }
 
 func addFuncToLibrary(f any, name string, ptypes []Type, rtype Type) {
-	fdef := FnCall{
+	fdef := Fun{
 		value:  f,
 		name:   name,
 		ptypes: ptypes,
@@ -125,7 +125,7 @@ func addFuncToLibrary(f any, name string, ptypes []Type, rtype Type) {
 	fn_library[Sym(fdef.name)] = fdef
 }
 
-func sampleFuncFromLibrary() FnCall {
+func sampleFuncFromLibrary() Fun {
 	keys := make([]Sym, 0)
 	// fmt.Println("fn_library = ", fn_library)
 	for k := range fn_library {
@@ -175,7 +175,7 @@ func sampleProgram(sp SampleParams) Program {
 
 stmtLoop:
 	for len(program) < sp.Program_length {
-		var f FnCall
+		var f Fun
 		f = sampleFuncFromLibrary()
 		stmt := Statement{
 			fn:      f,
@@ -185,31 +185,34 @@ stmtLoop:
 		// sample a random sym of the appropriate type from the Program above for each argument
 		if len(f.ptypes) != 0 {
 			for _, ptype := range f.ptypes {
-				symtypes, _ := local_catalog.syms_inv[ptype] // TODO: revert SymLine idea. or add Values as SymLines with Line = -1 ?
-				valuetypes := make([]SymLine, 0)
-				for sym := range value_library {
-					valuetypes = append(valuetypes, SymLine{
+				local_syms, _ := local_catalog.syms_inv[ptype] // TODO: revert SymLine idea. or add Values as SymLines with Line = -1 ?
+				global_syms := make([]SymLine, 0)
+				for sym, val := range value_library {
+					if val.vtype != ptype {
+						continue
+					}
+					global_syms = append(global_syms, SymLine{
 						sym:  sym,
 						line: uint16(len(program)), // FIXME: We don't usually use SymLine with argsyms! There may be consequences!!!
 					})
 				}
-				symtypes = append(valuetypes, symtypes...)
+				local_syms = append(global_syms, local_syms...)
 				// WARN: This is necessary because of exponential sampling. We have to make
 				// an independent decision about what probability to assign to syms from value_library vs the program body.
-				if len(symtypes) == 0 {
+				if len(local_syms) == 0 {
 					continue stmtLoop
 				}
 				var n int
 				if sp.Wire_nearby {
 					// Exponentially distributed sampling.
-					m := len(symtypes)
+					m := len(local_syms)
 					n = m - int(TruncatedExponentialSampler(nil, sp.WireDecayLen, float64(m))) - 1
 				} else {
 					// n = (idx * 103823) % len(symtypes)
 					// idx = idx + 1 // TODO: change the math here to control the wiring
-					n = rand.Intn(len(symtypes))
+					n = rand.Intn(len(local_syms))
 				}
-				arg := symtypes[n].sym
+				arg := local_syms[n].sym
 				if cheating == ZeroValue && rand.Float64() < 1.0/(float64(len(program)+1)) {
 					arg = Sym("Zero")
 				}

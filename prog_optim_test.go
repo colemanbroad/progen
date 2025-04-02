@@ -34,7 +34,7 @@ func TestReshuffle(t *testing.T) {
 // }
 
 func initPeanoLibrary() {
-	fn_library = make(map[Sym]FnCall)
+	fn_library = make(map[Sym]Fun)
 	addPeanoLib()
 }
 

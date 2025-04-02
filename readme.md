@@ -44,12 +44,22 @@ No global Logger or threaded, stateful logger. No JSON.
 CAN in principle write programs as text, parse and execute them... 
 
 
-ProGen           ; TacticsLang 
-======           ; =========== 
-Statements       ; Ops and Pieces
-FnCall           ; Value, FnCall, LitNum, LitStr 
-In process       ; Interpreter + Shared Heap
-Program Mutation ; Piece Optimizer
-i64 only         ; f64 with casting
-Sym = String     ; Syms have Scope
+ProGen              ; TacticsLang 
+======              ; =========== 
+Value, Fun          ; Func, Call, LitNum, LitStr 
+Statements          ; Ops, OpGeneral
+Program (Unchecked) ; Block, Piece, "fragment"?
+
+Program Sampler     ; Piece Sampler + Program Sampler
+Program Mutation    ; Piece Mutation
+Genetic Optimizer   ; Piece Optimizer
+i64                 ; f64 with casting
+Sym = String        ; Syms have Scope
+Type = String       ; CatalogType, TypedSym
+fn_lib, val_lib     ; Catalog, RootCatalog
+???                 ; EvalContext
+???                 ; PieceBuilder
+???                 ; Target trait
+
+In process          ; Interpreter + Shared Heap
 
