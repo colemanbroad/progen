@@ -502,3 +502,33 @@ I think because the Peano system had *half* of it's fragments (Zero / succ) woul
 - We can have a set of Values in the same way that we currently have a Library.
 - Values live in the ValueLib map[Sym]Value and the Sym keys can be used as _arguments_ to FnCalls directly, without first being added to the program body as an outsym. 
 
+---
+
+wire = peano experiment
+
+
+what are we measuring?
+what are we controlling?
+    - variables controlling program generation
+    - variables controlling campaigns?
+what is the workload / fragement sets?
+
+how are we generating programs?
+    - this is 
+
+
+A network model... Nodes send messages (values) at a time (float64) to a destination
+
+Nodes are state machines.
+All comms are to a single NetworkManager which keeps messages around, maybe delays them. Maybe sends them on.
+All nodes and the network manager have internal monotonically increasing clocks.
+All message send and arrival times are recorded. Time increases in random intervals on each Node/NetwormManager.
+
+The NetworkManager keeps the state of a bunch of Links.
+Links can be Up, Delay, Hold or Drop. When a link is Delay and it receives a message we decide immediately on the
+new time of arrival of the message and the Link's clock increases by delta t. When a link is Hold it keeps the
+Messages in a buffer and increments time and changes state. Only later do we decide if/when to send the messages
+in the buffer. 
+
+Faults are just ways of changing link state either as individual Links or in groups.
+Faults may accumulate?
