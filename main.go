@@ -16,7 +16,8 @@ func main() {
 		return
 	}
 
-	runP2()
+	BenchSampleProgram()
+	// runP2()
 	// runWire()
 	// runGenetic()
 }

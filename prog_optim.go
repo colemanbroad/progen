@@ -243,15 +243,15 @@ const (
 // these two things. Then have different kinds of analyses on []ValueMap (incl histograms).
 // But this forces us to realize the entire thing in momory! Better to have run_simple_prog
 // just generate programs and eval them continuously, then put them on a chan?
-func run_simple_program_gen(ch chan ValueMap, nprog int, sp SampleParams) {
-	for i := range nprog {
-		prog := sampleProgram(sp)
-		validateOrFail(prog, fmt.Sprintf("invalid program at i=%v\n", i))
-		// print_program(prog, Info)
-		values, _ := evalProgram(prog)
-		ch <- values
-	}
-}
+// func run_simple_program_gen(ch chan ValueMap, nprog int, sp SampleParams) {
+// 	for i := range nprog {
+// 		prog := sampleProgram(sp)
+// 		validateOrFail(prog, fmt.Sprintf("invalid program at i=%v\n", i))
+// 		// print_program(prog, Info)
+// 		values, _ := evalProgram(prog)
+// 		ch <- values
+// 	}
+// }
 
 func Run_genetic_program_optimization(p GPParams) {
 

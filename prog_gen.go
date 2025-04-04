@@ -158,7 +158,7 @@ func newSampleParams() SampleParams {
 // Depends on globals: fn_library, value_library and program_prefix, but only fn_library must be non-nil.
 func sampleProgram(sp SampleParams) Program {
 	gensym := GenSym{idx: 0}
-	program := make(Program, 0)
+	program := make(Program, 0, sp.Program_length)
 	// TODO: use the Catalog with lineno info to have more control over initial wiring
 	local_catalog := NewCatalog()
 	depthmap := make(map[Sym]int)
@@ -173,50 +173,45 @@ func sampleProgram(sp SampleParams) Program {
 		}
 	}
 
+	global_catalog := NewCatalog()
+	for sym, val := range value_library {
+		global_catalog.add(sym, val.vtype, 0) // FIXME! line is wrong
+	}
+
 stmtLoop:
 	for len(program) < sp.Program_length {
 		var f Fun
 		f = sampleFuncFromLibrary()
 		stmt := Statement{
 			fn:      f,
-			argsyms: make([]Sym, 0),
+			argsyms: make([]Sym, len(f.ptypes)),
 			outsym:  "void_sym",
 		}
 		// sample a random sym of the appropriate type from the Program above for each argument
 		if len(f.ptypes) != 0 {
-			for _, ptype := range f.ptypes {
-				local_syms, _ := local_catalog.syms_inv[ptype] // TODO: revert SymLine idea. or add Values as SymLines with Line = -1 ?
-				global_syms := make([]SymLine, 0)
-				for sym, val := range value_library {
-					if val.vtype != ptype {
-						continue
-					}
-					global_syms = append(global_syms, SymLine{
-						sym:  sym,
-						line: uint16(len(program)), // FIXME: We don't usually use SymLine with argsyms! There may be consequences!!!
-					})
-				}
-				local_syms = append(global_syms, local_syms...)
+			for i, ptype := range f.ptypes {
+				all_syms, _ := local_catalog.syms_inv[ptype] // TODO: revert SymLine idea. or add Values as SymLines with Line = -1 ?
+				all_syms = append(global_catalog.syms_inv[ptype], all_syms...)
 				// WARN: This is necessary because of exponential sampling. We have to make
 				// an independent decision about what probability to assign to syms from value_library vs the program body.
-				if len(local_syms) == 0 {
+				if len(all_syms) == 0 {
 					continue stmtLoop
 				}
 				var n int
 				if sp.Wire_nearby {
 					// Exponentially distributed sampling.
-					m := len(local_syms)
+					m := len(all_syms)
 					n = m - int(TruncatedExponentialSampler(nil, sp.WireDecayLen, float64(m))) - 1
 				} else {
 					// n = (idx * 103823) % len(symtypes)
 					// idx = idx + 1 // TODO: change the math here to control the wiring
-					n = rand.Intn(len(local_syms))
+					n = rand.Intn(len(all_syms))
 				}
-				arg := local_syms[n].sym
+				arg := all_syms[n].sym
 				if cheating == ZeroValue && rand.Float64() < 1.0/(float64(len(program)+1)) {
 					arg = Sym("Zero")
 				}
-				stmt.argsyms = append(stmt.argsyms, arg)
+				stmt.argsyms[i] = arg //= append(stmt.argsyms, arg)
 			}
 		}
 		stmt.outsym = gensym.gen()

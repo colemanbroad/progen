@@ -2,6 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"runtime/pprof"
+	"time"
 	// "log"
 )
 
@@ -255,5 +259,31 @@ func iterate_wirings(params ParamSets) {
 		WireDecayLen:   []float64{1.0, 0.5, 0.1},
 		n_iter:         []int{1000},
 		cheat:          []bool{true, false},
+	}
+}
+
+func BenchSampleProgram() {
+	f, err := os.Create("cpu.prof")
+	if err != nil {
+		log.Fatal(err)
+	}
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
+
+	fn_library = make(map[Sym]Fun)
+	addBasicMathLib()
+	// addPeanoLib()
+	sp := newSampleParams()
+	sp.Wire_nearby = false
+	var t0 time.Time
+	for i := range 18 {
+		sp.Program_length = 1 << i
+		fmt.Println("program length: ", sp.Program_length)
+		t0 = time.Now()
+		prog := sampleProgram(sp)
+		fmt.Println("time Gen: ", time.Now().Sub(t0))
+		t0 = time.Now()
+		evalProgram(prog)
+		fmt.Println("time Eval: ", time.Now().Sub(t0))
 	}
 }

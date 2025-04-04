@@ -52,7 +52,7 @@ Program (Unchecked) ; Block, Piece, "fragment"?
 
 Program Sampler     ; Piece Sampler + Program Sampler
 Program Mutation    ; Piece Mutation
-Genetic Optimizer   ; Piece Optimizer
+Genetic Optimizer   ; PieceSampler
 i64                 ; f64 with casting
 Sym = String        ; Syms have Scope
 Type = String       ; CatalogType, TypedSym
@@ -60,6 +60,7 @@ fn_lib, val_lib     ; Catalog, RootCatalog
 ???                 ; EvalContext
 ???                 ; PieceBuilder
 ???                 ; Target trait
+??? ; Dispatcher, Logger
 
 In process          ; Interpreter + Shared Heap
 

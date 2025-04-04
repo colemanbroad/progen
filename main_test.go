@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func TestBenchSampleProgram(b *testing.B) {
+func TestBenchSampleProgram(t *testing.T) {
 	f, err := os.Create("cpu.prof")
 	if err != nil {
 		log.Fatal(err)
