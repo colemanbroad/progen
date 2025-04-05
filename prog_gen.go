@@ -160,7 +160,7 @@ func sampleProgram(sp SampleParams) Program {
 	gensym := GenSym{idx: 0}
 	program := make(Program, 0, sp.Program_length)
 	// TODO: use the Catalog with lineno info to have more control over initial wiring
-	local_catalog := NewCatalog()
+	local_catalog := NewCatalog(sp.Program_length)
 	depthmap := make(map[Sym]int)
 
 	if program_prefix != nil {
@@ -173,7 +173,7 @@ func sampleProgram(sp SampleParams) Program {
 		}
 	}
 
-	global_catalog := NewCatalog()
+	global_catalog := NewCatalog(len(value_library))
 	for sym, val := range value_library {
 		global_catalog.add(sym, val.vtype, 0) // FIXME! line is wrong
 	}
@@ -359,10 +359,10 @@ type Catalog struct {
 	syms_inv map[Type][]SymLine
 }
 
-func NewCatalog() Catalog {
+func NewCatalog(n int) Catalog {
 	return Catalog{
-		syms:     make(map[SymLine]Type),
-		syms_inv: make(map[Type][]SymLine),
+		syms:     make(map[SymLine]Type, n),
+		syms_inv: make(map[Type][]SymLine, n),
 	}
 }
 
