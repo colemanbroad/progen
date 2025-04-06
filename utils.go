@@ -38,3 +38,13 @@ func mean(m []float64) float64 {
 	}
 	return sum / float64(n)
 }
+
+type IntHistogram map[int]int
+
+func (h IntHistogram) add(val int) {
+	c, exist := h[val]
+	if !exist {
+		c = 0
+	}
+	h[val] = c + 1
+}

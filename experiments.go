@@ -9,7 +9,7 @@ import (
 	// "log"
 )
 
-func initWire() {
+func initPeano() {
 	fn_library = make(map[Sym]Fun)
 	addPeanoLib()
 	if cheating == ZeroOnlyOnce {
@@ -38,12 +38,12 @@ func initWire() {
 // Cheating: Do we remove Zero from the Library after line 1 ? Peano Specific.
 // Decay: What is the decay rate in the exponential dist over lines when sampling an input arg.
 // Proglen: Program length
-func runWire() {
+func runPeano() {
 	for _, c := range []Cheating{ZeroValue} {
 		for _, decay := range []float64{0.1, 1.0, 0.0} {
 			for _, proglen := range []int{10, 20, 50, 100} {
 				cheating = Cheating(c)
-				initWire()
+				initPeano()
 				sp := newSampleParams()
 				sp.Wire_nearby = true
 				if decay == 0.0 {
@@ -52,37 +52,24 @@ func runWire() {
 				sp.WireDecayLen = decay
 				sp.Program_length = proglen
 				fmt.Println("Begin wiring: ", sp)
-				wire_inner(1, sp)
+				nprog := 1
+				vh := make(IntHistogram)
+				for range nprog {
+					prog := sampleProgram(sp)
+					values, _ := evalProgram(prog)
+					printProgramAndValues(prog, values)
+					for _, v := range values {
+						vh.add(v.value.(int))
+					}
+				}
+				fmt.Println("ProgLen = ", sp.Program_length, " Value Hist: ", vh)
+				savePeano(sp, nprog, vh)
 			}
 		}
 	}
 }
 
-type IntHistogram map[int]int
-
-func (h IntHistogram) add(val int) {
-	c, exist := h[val]
-	if !exist {
-		c = 0
-	}
-	h[val] = c + 1
-}
-
-func wire_inner(nprog int, sp SampleParams) {
-	vh := make(IntHistogram)
-	for range nprog {
-		prog := sampleProgram(sp)
-		values, _ := evalProgram(prog)
-		printProgramAndValues(prog, values)
-		for _, v := range values {
-			vh.add(v.value.(int))
-		}
-	}
-	fmt.Println("ProgLen = ", sp.Program_length, " Value Hist: ", vh)
-	saveWire(sp, nprog, vh)
-}
-
-func saveWire(sp SampleParams, nprog int, valuehist map[int]int) {
+func savePeano(sp SampleParams, nprog int, valuehist map[int]int) {
 	fmt.Println("saving: ", sp)
 	db := ConnectSqlite(*dbname)
 	defer db.Close()
@@ -97,38 +84,6 @@ func saveWire(sp SampleParams, nprog int, valuehist map[int]int) {
 			fmt.Println("Error saving wiring: ", sp, nprog)
 			return
 		}
-	}
-}
-
-func updateDepthToValues(depth2values map[int]*Set[int], prog Program, vals ValueMap, depthcount map[int]int) {
-	dm := createDepthmap(prog)
-	for s, val := range vals {
-		depth := dm[s]
-		d, ok := depthcount[depth]
-		if !ok {
-			d = 0
-		}
-		depthcount[depth] = d + 1
-		valset, ok := depth2values[depth]
-		if !ok {
-			valset = NewSet[int]()
-			depth2values[depth] = valset
-		}
-		intval, ok := val.value.(int)
-		if ok {
-			valset.Add(intval)
-		}
-	}
-}
-
-func saveDepthStats(d2v map[int]*Set[int], d2c map[int]int) {
-	keys := sortedKeys(d2v)
-	fmt.Println("Depth | Unique | Total | Ratio")
-	for _, depth := range keys {
-		// for depth, depthset := range depth2values {
-		depthset := d2v[depth]
-		total := d2c[depth]
-		fmt.Printf("%v\t%v\t%v\t%v \n", depth, depthset.Size(), total, float32(depthset.Size())/float32(total))
 	}
 }
 
@@ -149,18 +104,16 @@ func runP2() {
 			fmt.Println("Begin wiring: ", sp)
 			init_history()
 			init_reward()
-			depth2values := make(map[int]*Set[int])
-			depthcount := make(map[int]int)
+			stats := NewDepthStats()
 			global_time = 0
 			for range 1000 {
 				// fmt.Println("i = ", i)
 				prog := sampleProgram(sp)
 				vals, _ := evalProgram(prog)
-				updateDepthToValues(depth2values, prog, vals, depthcount)
+				stats.update(prog, vals)
 				global_time += 1
 			}
-			saveDepthStats(depth2values, depthcount)
-			saveP2(sp)
+			stats.print()
 		}
 	}
 }
@@ -240,29 +193,7 @@ func saveGenetic(p GPParams) {
 	check(err)
 }
 
-// This is my crappy attempt to write dictproduct. It's not even generic, but first
-// specific to the WiringExperiment.
-type ParamSets struct {
-	Wire_nearby    []bool
-	Program_length []int
-	WireDecayLen   []float64
-	n_iter         []int
-	cheat          []bool
-}
-
-// How can I write dictproduct??
-// First lets write it for the above: sp, n_iter, cheating
-func iterate_wirings(params ParamSets) {
-	params = ParamSets{
-		Wire_nearby:    []bool{true, false},
-		Program_length: []int{10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
-		WireDecayLen:   []float64{1.0, 0.5, 0.1},
-		n_iter:         []int{1000},
-		cheat:          []bool{true, false},
-	}
-}
-
-func BenchSampleProgram() {
+func benchmarkSampleProgram() {
 	f, err := os.Create("cpu.prof")
 	if err != nil {
 		log.Fatal(err)

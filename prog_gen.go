@@ -236,25 +236,6 @@ stmtLoop:
 	return program
 }
 
-func createDepthmap(prog Program) (depthmap map[Sym]int) {
-	depthmap = make(map[Sym]int)
-	for _, line := range prog {
-		depthmap[line.outsym] = getDepth(depthmap, line.argsyms...)
-	}
-	return depthmap
-}
-
-func getDepth(depthmap map[Sym]int, args ...Sym) int {
-	depth := 0
-	for _, a := range args {
-		d, ok := depthmap[a]
-		if ok {
-			depth = max(depth, d)
-		}
-	}
-	return depth + 1
-}
-
 // TruncatedExponentialSampler draws a f64 value from an exponential distribution
 // with rate λ, truncated to [0, trunc). It does not allocate mass at trunc.
 func TruncatedExponentialSampler(rng *rand.Rand, lambda, trunc float64) float64 {
