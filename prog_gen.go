@@ -157,7 +157,7 @@ func newSampleParams() SampleParams {
 // i.e. add lines conditional on what's already in the program.
 // Depends on globals: fn_library, value_library and program_prefix, but only fn_library must be non-nil.
 func sampleProgram(sp SampleParams) Program {
-	gensym := GenSym{idx: 0}
+	// gensym := GenSym{idx: 0}
 	program := make(Program, 0, sp.Program_length)
 	// TODO: use the Catalog with lineno info to have more control over initial wiring
 	local_catalog := NewCatalog(sp.Program_length)
@@ -178,6 +178,8 @@ func sampleProgram(sp SampleParams) Program {
 		global_catalog.add(sym, val.vtype, 0) // FIXME! line is wrong
 	}
 
+	pl := 0
+
 stmtLoop:
 	for len(program) < sp.Program_length {
 		var f Fun
@@ -185,40 +187,49 @@ stmtLoop:
 		stmt := Statement{
 			fn:      f,
 			argsyms: make([]Sym, len(f.ptypes)),
-			outsym:  "void_sym",
+			outsym:  Sym(fmt.Sprintf("v%v", pl)),
+			// outsym:  "void_sym",
 		}
 		// sample a random sym of the appropriate type from the Program above for each argument
 		if len(f.ptypes) != 0 {
 			for i, ptype := range f.ptypes {
-				all_syms, _ := local_catalog.syms_inv[ptype] // TODO: revert SymLine idea. or add Values as SymLines with Line = -1 ?
-				all_syms = append(global_catalog.syms_inv[ptype], all_syms...)
+				losyms := local_catalog.syms_inv[ptype]
+				// all_syms, _ := local_catalog.syms_inv[ptype] // TODO: revert SymLine idea. or add Values as SymLines with Line = -1 ?
+				// all_syms = append(global_catalog.syms_inv[ptype], all_syms...)
 				// WARN: This is necessary because of exponential sampling. We have to make
 				// an independent decision about what probability to assign to syms from value_library vs the program body.
-				if len(all_syms) == 0 {
-					continue stmtLoop
-				}
-				var n int
-				if sp.Wire_nearby {
-					// Exponentially distributed sampling.
-					m := len(all_syms)
-					n = m - int(TruncatedExponentialSampler(nil, sp.WireDecayLen, float64(m))) - 1
+				var arg Sym
+				if len(losyms) == 0 {
+					glsyms := global_catalog.syms_inv[ptype]
+					if len(glsyms) == 0 {
+						continue stmtLoop
+					}
+					n := rand.Intn(len(glsyms))
+					arg = glsyms[n].sym
 				} else {
-					// n = (idx * 103823) % len(symtypes)
-					// idx = idx + 1 // TODO: change the math here to control the wiring
-					n = rand.Intn(len(all_syms))
+					if sp.Wire_nearby {
+						// Exponentially distributed sampling.
+						m := len(losyms)
+						n := m - int(TruncatedExponentialSampler(nil, sp.WireDecayLen, float64(m))) - 1
+						arg = losyms[n].sym
+					} else {
+						// n = (idx * 103823) % len(symtypes)
+						// idx = idx + 1 // TODO: change the math here to control the wiring
+						n := rand.Intn(len(losyms))
+						arg = losyms[n].sym
+					}
 				}
-				arg := all_syms[n].sym
-				if cheating == ZeroValue && rand.Float64() < 1.0/(float64(len(program)+1)) {
-					arg = Sym("Zero")
-				}
+				// if cheating == ZeroValue && rand.Float64() < 1.0/(float64(len(program)+1)) {
+				// 	arg = Sym("Zero")
+				// }
 				stmt.argsyms[i] = arg //= append(stmt.argsyms, arg)
 			}
 		}
-		stmt.outsym = gensym.gen()
-		// fmt.Printf("add() in sampleProgram() sym = %v \n", stmt.outsym)
-		// fmt.Printf("gensym = %v", gensym)
+		// stmt.outsym = gensym.gen()
 		depthmap[stmt.outsym] = getDepth(depthmap, stmt.argsyms...)
 		local_catalog.add(stmt.outsym, stmt.fn.rtype, uint16(len(program))) // WARN: will break when len(prog) >= 2^16
+		// program[pl] = stmt
+		// pl += 1
 		program = append(program, stmt)
 	}
 	// fmt.Print(depthmap)
