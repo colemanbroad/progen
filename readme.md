@@ -49,18 +49,24 @@ ProGen              ; TacticsLang
 Value, Fun          ; Func, Call, LitNum, LitStr 
 Statements          ; Ops, OpGeneral
 Program (Unchecked) ; Block, Piece, "fragment"?
+Sym = String        ; Syms have Scope
+Type = String       ; CatalogType, TypedSym
 
 Program Sampler     ; Piece Sampler + Program Sampler
 Program Mutation    ; Piece Mutation
 Genetic Optimizer   ; PieceSampler
 i64                 ; f64 with casting
-Sym = String        ; Syms have Scope
-Type = String       ; CatalogType, TypedSym
 fn_lib, val_lib     ; Catalog, RootCatalog
 ???                 ; EvalContext
 ???                 ; PieceBuilder
-???                 ; Target trait
-??? ; Dispatcher, Logger
+No state yet        ; Target trait. Target/env has state. Tree fuzzing makes sense.
+???                 ; Dispatcher, Logger
 
 In process          ; Interpreter + Shared Heap
+
+
+No type enforcement between the function defined in a Fun and the stated arg/p types.
+TL DOES have this! It's probably necessary to provide to customers.
+Go progen could provide a function that uses reflection to confirm that the types are good. 
+
 

@@ -504,20 +504,21 @@ I think because the Peano system had *half* of it's fragments (Zero / succ) woul
 
 ---
 
-wire = peano experiment
+What are we observing/measuring?
+What are we controlling?
 
-
-what are we measuring?
-what are we controlling?
     - variables controlling program generation
-    - variables controlling campaigns?
-what is the workload / fragement sets?
+    - variables controlling campaigns
 
-how are we generating programs?
-    - this is 
+What is the fragement set?
+(What is the workload?)
+How are we generating programs?
 
+# Basic Math + Measure Depth vs Diversity
 
-A network model... Nodes send messages (values) at a time (float64) to a destination
+# Network model
+
+Nodes send messages (values) at a time (float64) to a destination.
 
 Nodes are state machines.
 All comms are to a single NetworkManager which keeps messages around, maybe delays them. Maybe sends them on.
@@ -532,3 +533,5 @@ in the buffer.
 
 Faults are just ways of changing link state either as individual Links or in groups.
 Faults may accumulate?
+
+
