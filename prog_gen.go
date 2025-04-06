@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"maps"
 	"math"
 	"math/rand"
 	"reflect"
@@ -98,9 +99,7 @@ func evalProgram(program Program) (values ValueMap, reward float64) {
 	r0 := Reward_total
 	locals := NewValueMap()
 	if value_library != nil {
-		for sym, val := range value_library {
-			locals[sym] = val
-		}
+		maps.Copy(locals, value_library)
 	}
 	for _, stmt := range program {
 		evalStatement(stmt, locals)

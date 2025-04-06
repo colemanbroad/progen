@@ -17,7 +17,7 @@ func main() {
 	}
 
 	// benchmarkSampleProgram()
-	runP2()
+	runPow2()
 	// runWire()
 	// runGenetic()
 }

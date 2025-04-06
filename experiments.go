@@ -88,7 +88,7 @@ func savePeano(sp SampleParams, nprog int, valuehist map[int]int) {
 }
 
 // How does deeper wiring affect the Powers of Two distribution?
-func runP2() {
+func runPow2() {
 	fn_library = make(map[Sym]Fun)
 	addBasicMathLib()
 	// addPowerOfTwo()
@@ -118,7 +118,7 @@ func runP2() {
 	}
 }
 
-func saveP2(sp SampleParams) {
+func savePow2(sp SampleParams) {
 	db := ConnectSqlite(*dbname)
 	defer db.Close()
 	var err error
