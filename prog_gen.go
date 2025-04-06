@@ -158,7 +158,7 @@ func newSampleParams() SampleParams {
 // Depends on globals: fn_library, value_library and program_prefix, but only fn_library must be non-nil.
 func sampleProgram(sp SampleParams) Program {
 	// gensym := GenSym{idx: 0}
-	program := make(Program, 0, sp.Program_length)
+	program := make(Program, sp.Program_length)
 	// TODO: use the Catalog with lineno info to have more control over initial wiring
 	local_catalog := NewCatalog(sp.Program_length)
 	depthmap := make(map[Sym]int)
@@ -181,7 +181,7 @@ func sampleProgram(sp SampleParams) Program {
 	pl := 0
 
 stmtLoop:
-	for len(program) < sp.Program_length {
+	for pl < sp.Program_length {
 		var f Fun
 		f = sampleFuncFromLibrary()
 		stmt := Statement{
@@ -228,9 +228,9 @@ stmtLoop:
 		// stmt.outsym = gensym.gen()
 		depthmap[stmt.outsym] = getDepth(depthmap, stmt.argsyms...)
 		local_catalog.add(stmt.outsym, stmt.fn.rtype, uint16(len(program))) // WARN: will break when len(prog) >= 2^16
-		// program[pl] = stmt
-		// pl += 1
-		program = append(program, stmt)
+		program[pl] = stmt
+		pl += 1
+		// program = append(program, stmt)
 	}
 	// fmt.Print(depthmap)
 	return program
