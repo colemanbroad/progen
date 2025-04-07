@@ -534,4 +534,13 @@ in the buffer.
 Faults are just ways of changing link state either as individual Links or in groups.
 Faults may accumulate?
 
+# Todo
 
+-[ ] generics?
+-[ ] funcs as args and return values?
+-[ ] closures (syntax for defining a func -- fn as return value -- that
+    references symbols in the current scope and function in the lib
+    without passing them into the arguments of another fn.)
+-[ ] loops
+-[ ] branching
+-[ ] update in place (overwite sym) 
