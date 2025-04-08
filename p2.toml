@@ -1,8 +1,0 @@
-[[plot]]
-query = """
-select * from myview;
-"""
-[plot.config]
-x = "time"
-y = "value"
-color = "campaign_id"

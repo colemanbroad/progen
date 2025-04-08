@@ -366,7 +366,7 @@ I want to be able to run a large number of trials, looping over hyperparams.
 This will require full control of init() time.
 
 
-# Wiring Experiment 001
+# Peano Experiment 001
 
 Plot x axis is the wiring depth to root of a symbol using a library that consists only
 of `zero` and `succ(x)`. The y axis shows the count of symbols with that depth summed
@@ -544,3 +544,23 @@ Faults may accumulate?
 -[ ] loops
 -[ ] branching
 -[ ] update in place (overwite sym) 
+
+# Experiments Run So Far
+
+Fragment Sets
+- Add,Mul,One
+- Add,Mul,LShift,One
+- Succ, (Zero as value)
+- Succ, Zero
+- Add,Mul,PowerOfTwo
+- Add,Mul,LShift,PowerOfTwo
+
+- Pitsworld?
+- Network Controller
+- Network Workloads (echoserver, basic Raft?) 
+
+Analyses (Margins) (Projections) 
+- Depth (min distance to root value)
+- Value
+
+

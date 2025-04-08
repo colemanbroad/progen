@@ -5,3 +5,8 @@ coverage.out
 coverage.html
 *.sqlite
 *.db
+
+cpu.prof
+proggen
+py/uv.lock
+tiger.csv
