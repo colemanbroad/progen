@@ -6,7 +6,7 @@
 select name, type FROM sqlite_master
 ;
 
--- Quick snapshot of the main table and columns.
+    -- Quick snapshot of the main table and columns.
 select *, count() from wire_pow_of_two
 group by campaign_id
 ;
@@ -16,7 +16,7 @@ create view if not exists Camp as
 select distinct decay, proglen, campaign_id from wire_pow_of_two ;
 
 -- Make a table of all the unique powers of two for each campaign.
--- create view UniquePo2 as
+    -- create view UniquePo2 as
 with
 A as ( select distinct campaign_id, log(2, value) lg2val  from wire_pow_of_two ),
 B as ( select *, floor(lg2val)=lg2val isPo2 from A ),
@@ -45,23 +45,24 @@ where cnt = 2
 
 -- Let's look at the reward over time. Does it look like the fancy
 -- wiring approaches find powers of two earlier and then peter out?
--- x=time y=logrew c=logrew row=decay
+    -- x=time y=logrew c=logrew row=decay
 select *, log(2, reward) as logrew
 from wire_pow_of_two
 where reward > 0
 ;
 
-
--- Plot cumulative log-reward over time
--- x=time y=sum_reward c=decay
+-- Plot cumulative log-reward over time. There is a clear advantage
+-- to the wiring schemes that prefer the recent program lines!
+-- x=time y=sum_reward c=_decay
 with
 A as (
-select *, log(2, reward) as logrew
+select *, log(2, reward) as logrew, cast(decay as text) _decay
 from wire_pow_of_two
 where reward > 0
 )
-select *, sum(-logrew) over (partition by campaign_id order by time) "sum_reward"
+select *, sum(reward) over (partition by campaign_id order by time) "sum_reward"
 from A
+order by _decay
 ;
 
 -- Reward Cumulative Distribution

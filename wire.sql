@@ -3,21 +3,16 @@
 -- First, list all the tables.
 select name FROM sqlite_master WHERE type='table';
 
-
+-- controlled variables
 select distinct prog_l from wiring ;
-
 select distinct wr_decay from wiring ;
-
 select distinct wr_nearby from wiring ;
-
 select distinct n_prog from wiring ;
-
-select distinct depth from wiring order by depth ;
-
-select distinct count from wiring order by count;
-
 select distinct cheating from wiring ;
 
+-- measured variables
+select distinct depth from wiring order by depth ;
+select distinct count from wiring order by count;
 
 -- Sample the first 20
 select * from wiring limit 20;

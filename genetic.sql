@@ -5,13 +5,20 @@
 select name, type FROM sqlite_master
 ;
 
--- wiring               table
--- history_power_of_two table
--- program_history      table
--- campaigns            table
--- history_binned       table
--- hb2                  table
--- distplot             table
+-- depth, count count=3559
+select count() from wiring ;
+
+-- value, reward, time count=3814617
+select count() from history_power_of_two ;
+
+-- val, reward, time count=1750
+select count() from history_binned ;
+
+-- value, reward, time count=289181
+select count() from hb2 ;
+
+-- cnt, mut, rowid ? count=60
+select count() from distplot ;
 
 -- Quick snapshot of the main table and columns.
 select *, count() from history_power_of_two

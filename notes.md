@@ -563,4 +563,25 @@ Analyses (Margins) (Projections)
 - Depth (min distance to root value)
 - Value
 
+- wire.sql
+    We used different variants of the Peano fragments.
+    We played with wiring methodology (decay) and program length.
+    We measured `depth` and `count`.
+    We wanted to know if we could control the depth distribution.
+    We determined that escaping exponential distributions is hard unless you use Zero as a Value.
+- p2.sql
+    We used the basic math + power-of-two fragment sets.
+    We played with wiring methodology (decay).
+    We measured `value`, `reward`, and `time`.
+    We wanted to know if
+    - we could make broader depth distributions.
+    - broader distributions would find more powers of two.
+    We determined that we CAN extend the exponential depth distribution with wiring decay.
+    And this DOES have an effect on the number of unique powers of two (+4) and the cumulative reward (+60%).
+- genetic.sql
+    We used the basic math + power-of-two fragment sets.
+    We played with ???
+    We measured power-of-two (value, reward, time) AND wiring (depth, count).
+
+- The p2 experiments can be rerun without touching the DB, just printing tables.
 
