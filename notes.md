@@ -585,3 +585,29 @@ Analyses (Margins) (Projections)
 
 - The p2 experiments can be rerun without touching the DB, just printing tables.
 
+What experiments _should_ we run?
+Our major, high-level questions are about efficiently finding bugs across all software.
+But we're starting off with distributed systems.
+And the most common dist sys bugs (and checkers) center around the orderings of events.
+Formal methods try to prove that communicating state machines maintain invariants across
+all possible event orderings.
+Why are multiple orderings possible?
+1. Messages travel across a network and experience different random delays / disappear.
+2. Each machine proceeds at an indepent pace.
+
+Which of these is the greater source of variation?
+Each machine is processing concurrently while messages are being sent.
+The system as a whole may have a lifetime in days, months or years before a full-system reset.
+A single packet can take (best case) ~200ms to travel to the other side of the world.
+A photon traveling through vacuum/glass takes 134/200ms to traverse the circumference. 
+But on faulty networks it can be arbitrarily long. [source for a real distribution here?]
+
+Each computer is very precisely a state machine, although the granularity of states
+consisdered by dist-sys checking tools and the way "state" is used in dist-sys algorithms
+e.g. Raft is much more coarse. So while the machine may change states at a rate 1e9/s in
+one sense, it may maintain a single dist-sys state e.g. (leader, follower, voter) for arbitrarily long times!
+
+In general we expect that 
+
+
+We might guess that whichever 

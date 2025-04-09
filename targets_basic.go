@@ -61,13 +61,3 @@ func addPeanoLib() {
 	f = func() int { return 0 }
 	addFuncToLibrary(f, "zero", []Type{}, "int")
 }
-
-func addPeanoValueLib() {
-	// TODO: How are we going to allow for ZeroValue in Programs with the same semantics as Values
-	// in Rust GenTactics?
-	value_library["Zero"] = Value{
-		value: 0,
-		name:  "Zero",
-		vtype: "int",
-	}
-}

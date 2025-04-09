@@ -30,7 +30,13 @@ func initPeano() {
 		// sampleProgram... But this will not work. We could use a Progen style Litnum here?! OK, let's try that!
 	} else if cheating == ZeroValue {
 		value_library = make(map[Sym]Value)
-		addPeanoValueLib()
+		// TODO: How are we going to allow for ZeroValue in Programs with the same semantics as Values
+		// in Rust GenTactics?
+		value_library["Zero"] = Value{
+			value: 0,
+			name:  "Zero",
+			vtype: "int",
+		}
 		delete(fn_library, "zero")
 	}
 }
