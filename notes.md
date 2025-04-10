@@ -607,7 +607,56 @@ consisdered by dist-sys checking tools and the way "state" is used in dist-sys a
 e.g. Raft is much more coarse. So while the machine may change states at a rate 1e9/s in
 one sense, it may maintain a single dist-sys state e.g. (leader, follower, voter) for arbitrarily long times!
 
-In general we expect that 
+--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- 
+
+What is the right algorithm to implement for Program minimization?
+Is it delta debugging? Is it a generalization of Delta Debugging?
+OK, it looks like Delta Debugging has spawned a long stream of continuous
+research with modification of the original DD algorithms taking on funny
+names, showing improvement on specific benchmarks and adding refinements
+that don't change the core idea.
+
+The original is [1] which defines the core algorithm on sequences of input.
+The most cited improvement over the original DD is [2]. It is designed
+for Tree-based inputs and requires knowledge of a grammar, and takes a
+coarse-to-fine ablation approach. It can be applied to programs on the AST,
+but this breaks when there are definitions/DAG dependencies.
+
+What we need to apply this to our programs is...
+Know the structure of the program. Which nodes can be cut/replaced?
+Which components are totally independent at the top level? (There may only be one
+giant Connected Component.) When we make a cut we have to replace the argsyms
+with something new. Or we have to replace the (Fun Args...) with a new Fun
+and new Args (potentially none) of the right type. We're trying to cut
+large swaths of the search space. Ideally we'd cut the program in half
+each time!
+
+    There may be a fundamental tension between creating programs that are DEEP
+    (the goal of our depth distribution experiments) and creating programs that
+    are easy to minimize!
+
+First, we can cut out all the program that isn't upstream of the condition/
+failure. Then, we can go about pruning the DAG. Wherever we use a Fun that
+takes varargs we can try cutting a subset of the inputs. Wherever we have
+a Fun that takes a typed arg, we can replace it with a minimal construct
+of the same type. Some types can be created directly (we have an int value "one"
+always available), but others may require small (minimal) programs to build.
+
+Our condition/failure may not live in the program directly, but may come
+from some external oracle with unknown dependencies on the different lines
+of the Program. This means instead of immediately being able to prune all
+the top level code that isn't upstream of the condition we must prune it
+by running standard Delta Debugging on the set of top-level connected
+components.
+
+Delta Debugging is for _set structured_ input.
+Hierarchical Delta Debugging is for _tree structured_ input. 
+We need something for _DAG structured_ input.
 
 
-We might guess that whichever 
+1. Delta Debugging top level nodes.
+I guess if our programs look like trees with  
+
+[1]: Zeller and R. Hildebrandt. "Simplifying and isolating failure-inducing input."
+[2]: Ghassan Misherghi and Zhendong Su. "HDD: Hierarchical Delta Debugging"
+
