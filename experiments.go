@@ -9,7 +9,19 @@ import (
 	// "log"
 )
 
-func initPeano() {
+var (
+	program_history []ProgramHistoryRow
+)
+
+type Cheating = int
+
+const (
+	NoCheating Cheating = iota
+	ZeroValue
+	ZeroOnlyOnce
+)
+
+func initPeano(cheating Cheating) {
 	fn_library = make(map[Sym]Fun)
 	addPeanoLib()
 	if cheating == ZeroOnlyOnce {
@@ -25,13 +37,18 @@ func initPeano() {
 			argsyms: []Sym{},
 		}}
 		delete(fn_library, "zero")
-		// PROBLEM: if we remove Zero from fn_lib here then it won't be available when we need to eval the program later!
-		// So... this method doesn't work. We could have a generic "filter library syms" function that is applied during
-		// sampleProgram... But this will not work. We could use a Progen style Litnum here?! OK, let's try that!
+
+		// if we remove Zero from fn_lib here then it won't be available
+		//  when we need to eval the program later!
+		// So... this method doesn't work. We could have a generic
+		// "filter library syms" function that is applied during
+		// sampleProgram... But this will not work. We could use a
+		// Progen style Litnum here?! OK, let's try that!
+
 	} else if cheating == ZeroValue {
 		value_library = make(map[Sym]Value)
-		// TODO: How are we going to allow for ZeroValue in Programs with the same semantics as Values
-		// in Rust GenTactics?
+		// TODO: How are we going to allow for ZeroValue in Programs
+		// with the same semantics as Values in Rust GenTactics?
 		value_library["Zero"] = Value{
 			value: 0,
 			name:  "Zero",
@@ -48,8 +65,7 @@ func runPeano() {
 	for _, c := range []Cheating{ZeroValue} {
 		for _, decay := range []float64{0.1, 1.0, 0.0} {
 			for _, proglen := range []int{10, 20, 50, 100} {
-				cheating = Cheating(c)
-				initPeano()
+				initPeano(Cheating(c))
 				sp := newSampleParams()
 				sp.Wire_nearby = true
 				if decay == 0.0 {
@@ -69,13 +85,13 @@ func runPeano() {
 					}
 				}
 				fmt.Println("ProgLen = ", sp.Program_length, " Value Hist: ", vh)
-				savePeano(sp, nprog, vh)
+				savePeano(sp, nprog, vh, Cheating(c))
 			}
 		}
 	}
 }
 
-func savePeano(sp SampleParams, nprog int, valuehist map[int]int) {
+func savePeano(sp SampleParams, nprog int, valuehist map[int]int, cheating Cheating) {
 	fmt.Println("saving: ", sp)
 	db := ConnectSqlite(*dbname)
 	defer db.Close()
@@ -165,7 +181,7 @@ func runGenetic() {
 		init_reward()
 		// Init_campaign()
 		p := GPParams{N_rounds: 1000, N_programs: 20, Ltype: NoMut}
-		Run_genetic_program_optimization(p)
+		RunGenetic(p)
 		saveGenetic(p)
 	}
 }

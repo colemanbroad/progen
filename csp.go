@@ -33,6 +33,6 @@ func (m *Machine) write(new int) {
 // Or we have two clients writing to the same db. The db holds state and
 // the clients read it and write back the value + 1. The
 func someTask() {
-	a := Machine{1}
-	b := Machine{2}
+	// a := Machine{1}
+	// b := Machine{2}
 }

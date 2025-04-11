@@ -59,7 +59,7 @@ func TestPointMutateLong(t *testing.T) {
 	initPeanoLibrary()
 	for range 1000 {
 		p := sampleProgram(newSampleParams())
-		p, _ = PointMutate(p)
+		p, _ = pointMutate(p)
 		validateOrFail(p, "mutated")
 	}
 }
@@ -69,7 +69,7 @@ func TestBasicgenRewireLong(t *testing.T) {
 	hadSuccess, hadFailure := false, false // tracks whether we achieved True and False returns (sometimes each)
 	for range 1000 {
 		p := sampleProgram(newSampleParams())
-		p, isSuccess := rewire_base(p)
+		p, isSuccess := rewireBase(p)
 		hadSuccess = hadSuccess || isSuccess
 		hadFailure = hadFailure || !isSuccess
 		validateOrFail(p, "rewired")
@@ -90,16 +90,16 @@ func TestBasicgenComboLong(t *testing.T) {
 		switch {
 		case x < 0.3:
 			p = reshuffle(p)
-			panic_if_invalid(p)
+			panicIfInvalid(p)
 		case x < 0.6:
-			p, _ = PointMutate(p)
-			panic_if_invalid(p)
+			p, _ = pointMutate(p)
+			panicIfInvalid(p)
 		case x < 0.9:
-			p, _ = rewire_base(p)
-			panic_if_invalid(p)
+			p, _ = rewireBase(p)
+			panicIfInvalid(p)
 			// p = rewire(p)
 		default:
 		}
-		panic_if_invalid(p)
+		panicIfInvalid(p)
 	}
 }

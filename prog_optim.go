@@ -35,7 +35,8 @@ func isValid[T UncheckedProgram | Program](program T) bool {
 	return true
 }
 
-func panic_if_invalid[T UncheckedProgram | Program](prog T) {
+
+func panicIfInvalid[T UncheckedProgram | Program](prog T) {
 	validateOrFail(prog, "The program is invalid.")
 }
 
@@ -58,7 +59,7 @@ func getSymSet(program UncheckedProgram) SymSet {
 	return symset
 }
 
-func (program UncheckedProgram) rename_syms(renames map[Sym]Sym) {
+func (program UncheckedProgram) renameSyms(renames map[Sym]Sym) {
 	for i, stmt := range program {
 		newname, ok := renames[stmt.outsym]
 		if ok {
@@ -75,7 +76,7 @@ func (program UncheckedProgram) rename_syms(renames map[Sym]Sym) {
 }
 
 // Change the sym names used in `tochange` to be disjoint from names used in `fixed` (either argsyms or outsyms).
-func (tochange UncheckedProgram) uniquify_syms(fixed UncheckedProgram) {
+func (tochange UncheckedProgram) uniquifySyms(fixed UncheckedProgram) {
 	symset_p1 := getSymSet(fixed)
 	symset_p2 := getSymSet(tochange)
 
@@ -85,7 +86,7 @@ func (tochange UncheckedProgram) uniquify_syms(fixed UncheckedProgram) {
 		renames[item] = gensym.genUnique(symset_p1)
 	}
 
-	tochange.rename_syms(renames)
+	tochange.renameSyms(renames)
 }
 
 type InterleaveConfig struct {
@@ -106,7 +107,7 @@ func interleave(a, b Program, cfg InterleaveConfig) Program {
 	validateOrFail(b, "Fail on b.")
 	l, m := UncheckedProgram(CopyProgram(a)), UncheckedProgram(CopyProgram(b))
 	// TODO: rename syms from both programs to be simple v0, v1, ... vN
-	m.uniquify_syms(l)
+	m.uniquifySyms(l)
 	validateOrFail(l, "Fail on l.")
 	validateOrFail(m, "Fail on m.")
 	catalog := make(map[Type][]Sym)
@@ -166,7 +167,7 @@ outer:
 // }
 
 func CopyProgram[T Program | UncheckedProgram](prog T) T {
-	panic_if_invalid(prog)
+	panicIfInvalid(prog)
 	prog_copy := make(T, len(prog))
 	for i := range prog_copy {
 		argsyms := make([]Sym, len(prog[i].argsyms))
@@ -179,21 +180,21 @@ func CopyProgram[T Program | UncheckedProgram](prog T) T {
 			argsyms: argsyms,
 		}
 	}
-	panic_if_invalid(prog_copy)
+	panicIfInvalid(prog_copy)
 	return prog_copy
 }
 
-func rewire_base[T Program | UncheckedProgram](prog T) (Program, bool) {
+func rewireBase[T Program | UncheckedProgram](prog T) (Program, bool) {
 	catalog := make(map[Type][]Sym)
-	panic_if_invalid(prog)
+	panicIfInvalid(prog)
 	prog_copy := CopyProgram(prog)
-	panic_if_invalid(prog_copy)
+	panicIfInvalid(prog_copy)
 
 	for i, stmt := range prog_copy {
 		for j, argtype := range stmt.fn.ptypes {
 			arg_options := catalog[argtype]
 			if len(arg_options) == 0 {
-				panic_if_invalid(prog_copy)
+				panicIfInvalid(prog_copy)
 				return Program(prog_copy), false // no new wiring found
 			}
 			n := rand.Intn(len(arg_options))
@@ -202,7 +203,7 @@ func rewire_base[T Program | UncheckedProgram](prog T) (Program, bool) {
 		catalog[stmt.fn.rtype] = append(catalog[stmt.fn.rtype], stmt.outsym)
 		prog_copy[i] = stmt
 	}
-	panic_if_invalid(prog_copy)
+	panicIfInvalid(prog_copy)
 	return Program(prog_copy), true
 }
 
@@ -226,19 +227,6 @@ const (
 	ReGen
 )
 
-var (
-	program_history []ProgramHistoryRow
-	cheating        Cheating
-)
-
-type Cheating = int
-
-const (
-	NoCheating Cheating = iota
-	ZeroValue
-	ZeroOnlyOnce
-)
-
 // We could actually run analysis on values AFTER generating all the programs and decouple
 // these two things. Then have different kinds of analyses on []ValueMap (incl histograms).
 // But this forces us to realize the entire thing in momory! Better to have run_simple_prog
@@ -253,7 +241,7 @@ const (
 // 	}
 // }
 
-func Run_genetic_program_optimization(p GPParams) {
+func RunGenetic(p GPParams) {
 
 	program_history = make([]ProgramHistoryRow, p.N_programs*p.N_rounds)
 	programs := make([]Program, p.N_programs)
@@ -268,7 +256,6 @@ func Run_genetic_program_optimization(p GPParams) {
 	}
 
 	for i := range p.N_rounds {
-
 		// eval scores
 		for k, prog := range programs {
 			validateOrFail(prog, fmt.Sprintf("Failed evaluating sample program %v .\n", k))
@@ -300,7 +287,7 @@ func Run_genetic_program_optimization(p GPParams) {
 			case 0:
 				new_programs[k] = programs[k]
 			case 1:
-				new_programs[k] = mutate_program(best_programs[n], best_programs)
+				new_programs[k] = mutate(best_programs[n], best_programs)
 			case 2:
 				new_programs[k] = sampleProgram(newSampleParams())
 			}
@@ -323,7 +310,6 @@ func Run_genetic_program_optimization(p GPParams) {
 	for _, prog := range programs {
 		printProgram(prog, Info)
 	}
-
 }
 
 // copies oprog
@@ -351,7 +337,7 @@ func reshuffle(oprog Program) Program {
 	}
 }
 
-func mutate_program(p Program, best_programs []Program) Program {
+func mutate(p Program, best_programs []Program) Program {
 	r := rand.Float32()
 	switch {
 	case r < 0.1:
@@ -362,11 +348,11 @@ func mutate_program(p Program, best_programs []Program) Program {
 		return reshuffle(p)
 	case r < 0.3:
 		// fmt.Println("point_mutate")
-		pnew, _ := PointMutate(p)
+		pnew, _ := pointMutate(p)
 		return pnew
 	case r < 0.4:
 		// fmt.Println("rewire")
-		p, _ := rewire_base(p)
+		p, _ := rewireBase(p)
 		return p
 	case r < 0.5:
 		// fmt.Println("prune")
@@ -384,7 +370,7 @@ func mutate_program(p Program, best_programs []Program) Program {
 }
 
 // Replace a FnCall in Program with one from Library with matching rtype and ptypes.
-func PointMutate(prog_ Program) (Program, bool) {
+func pointMutate(prog_ Program) (Program, bool) {
 	libinv := buildLibraryInverse()
 	replaceables := make(map[int]*Set[Sym])
 	prog := CopyProgram(prog_) // TODO: does this reassign the pointer? I think yes.
