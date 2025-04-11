@@ -16,8 +16,10 @@ func main() {
 		return
 	}
 
+	deltaDebug()
+
 	// benchmarkSampleProgram()
-	runPow2()
+	// runPow2()
 	// runWire()
 	// runGenetic()
 }
