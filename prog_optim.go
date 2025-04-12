@@ -54,7 +54,6 @@ func deltaDebug() {
 	}
 	min := slices.Clone(input)
 	n := 2
-	_ = n
 
 	if !test(input) {
 		fmt.Println("The input doesn't meet the condition!")
@@ -63,7 +62,7 @@ func deltaDebug() {
 	}
 
 outer:
-	for {
+	for n <= len(min) {
 		l := len(min)
 		for _, complement := range []bool{false, true} {
 			for i := range n {
@@ -82,16 +81,65 @@ outer:
 					continue outer
 				}
 			}
+			n = intmin(2*n, l)
 		}
-		if n == l {
-			break outer
-		}
-		n *= 2
-		n = intmin(n, l)
 	}
 
 	fmt.Println("We found a minimal sequence and it is....")
 	fmt.Println(min)
+}
+
+func deltaD[T any](input []T, test func(s []T) bool) []T {
+	if !test(input) {
+		fmt.Println("The input doesn't meet the condition!")
+		fmt.Println(input)
+		return nil
+	}
+	min := slices.Clone(input)
+	n := 2
+outer:
+	for n <= len(min) {
+		l := len(min)
+		for i := range n {
+			a := int(i * l / n)
+			b := int((i + 1) * l / n)
+			sub := slices.Clone(min)
+			sub = slices.Delete(sub, a, b)
+			if test(sub) {
+				min = sub
+				n = 2
+				continue outer
+			}
+		}
+		if n == l {
+			break
+		}
+		n = intmin(2*n, l)
+	}
+	fmt.Println("We found a minimal sequence and it is....")
+	fmt.Println(min)
+	return min
+}
+
+func testDeltaD() {
+	input := make([]int, 2500)
+	input[0] = 1
+	input[1000] = 2
+	input[2000] = 3
+	input[2499] = 5
+	test := func(s []int) bool {
+		b1 := slices.Contains(s, 1)
+		b2 := slices.Contains(s, 2)
+		b3 := slices.Contains(s, 3)
+		b4 := slices.Contains(s, 5)
+		return b1 && b2 && b3 && b4
+	}
+	result := deltaD(input, test)
+	_ = result
+}
+
+func hasSubseq[T comparable](orig, sub []T) (start, stop int) {
+
 }
 
 func intmin(a, b int) int {

@@ -16,7 +16,8 @@ func main() {
 		return
 	}
 
-	deltaDebug()
+	// deltaDebug()
+	testDeltaD()
 
 	// benchmarkSampleProgram()
 	// runPow2()

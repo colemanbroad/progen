@@ -1,14 +1,20 @@
 
-# Basic delta debugging
+Synonyms in the literature:
+- reduction
+- shrinking
+- minimization
+- debloating
 
-Zeller[1] defines two algorithms `ddmin` which minimizes a failing test case and `dd`
+# Sequences
+
+Zeller[ZH02] defines two algorithms `ddmin` which minimizes a failing test case and `dd`
 which minimizes the failing test case while simultaneously maximizing the fraction of
 the input that comes from an additional, *passing* test case. In this overview we will
 focus only on the basic `ddmin`. The original `ddmin` is demonstrated on HTML, Mozilla
 User Click data, and C source code. When targeting C they run ddmin on the sequence of
 characters in the file, ignoring any information from a potential C tokenizer/parser.
 
-Specifically [1] propose a coarse-to-fine approach that ignores any inherent structrue of
+Specifically [ZH02] propose a coarse-to-fine approach that ignores any inherent structrue of
 the input other than the raw sequence. The core algorithm partitions the input into `n=2`
 subsequences by cutting it in the middle. Each partition is tested on it's own, then if
 the condition is not reproduced the *complement* of each partition is tested. If at any
@@ -16,8 +22,8 @@ point we manage to repro the failure then we discard the unsued sequence and res
 otherwise at the of the `2n` test cases we double `n *= 2` and repeat.
 
 The idea behind `ddmin` is so broad that it cries out for generalizations beyond strings
-of characters to data with more structure. The best summary of such extensions is Regehr's
-blog post[0]. Regehr says this about the original Zeller paper[1].
+of characters to data with more structure. The best summary of the history of test-case reduction and generalizations of delta debuggin can be found on John Regehr's
+blog posts [0],[c-reduce]. Regehr says this about the original Zeller paper,
 
   > The enduring value of the paper is to popularize and assign a name
   to the idea of using a search algorithm to improve the quality of
@@ -28,12 +34,35 @@ original ddmin taking advantage of some aspect of the input structure. Interesti
 find that
 
   > local minima can often by escaped by running the implementations one after the other.
- 
-# ddmin for structured data
+
+This work culminated in [c-reduce] which differs in interesting ways from other approaches
+to minimization. Perhaps most importantly, is it tries hard to escape local minima!
+
+  > The C-Reduce core does not insist that transformations make the test case smaller, and
+    in fact quite a few of its passes potentially increase the size of the test case, with
+    the goal of eliminating sources of coupling within the test case, unblocking progress
+    in other passes.
+
+This "eliminating the source of coupling" idea is like our idea that upstream nodes
+in the program DAG that prevent the DAG from being a Tree can be copied/duplicated
+if it allows us to prune large branches of the resulting tree.
+
+  > The sequence of transformation passes is carefully orchestrated such that passes that
+    are likely to give the biggest wins -- such as those that remove entire functions --
+    run first;
+
+  > only a small proportion of the transformation passes is intended to be
+    semantics-preserving [...] we only want to preserve enough semantics that we can
+    probabilistically avoid breaking whatever property makes a test case interesting
+
+However [c-reduce] still runs, fundamentally, on C/C++ source code, while *we are running
+directly on program IR*.
+
+# Trees
 
 How can `ddmin` best be applied to data with structure beyond that of a string of chars?
 
-There is has been continuous research on this topic since [1] with perhaps the most
+There is has been continuous research on this topic since [ZH02] with perhaps the most
 successful variant being Hierarchical Delta Debugging [HDD][2] (HDD), wihch is designed
 for tree-structured inputs and requires knowledge of a (context-free) grammar describing
 the input. [HDD][2] takes a coarse-to-fine ablation approach where first the top level
@@ -59,6 +88,8 @@ divide and shrink as we increase the threshold. "Monotonic" means our interestin
 test is something like "does this sequence of statments S1 contain the subsequence S2" or
 something like that. You can imagine asking the same question about sets of pixels.
 
+# DAGs 
+
 In the comments around [0] a user proposes a more flexible version of [2] that works
 with DAGs intead of trees. The idea is that you have a linear thing (a source file) and
 you have _guesses_ as to which chunks of the file are related in some way e.g. you make
@@ -67,8 +98,6 @@ are used to increase the scope) we would be able to form a parse tree (assuming 
 grammar doesn't allow defining references). But if we don't know the delimiters we can
 still guess and maybe our guesses overlap each other. Thus we've got potentially overlapping spans of source and these naturally form a partial order `A subset B`.
 
-## An aside on spans and relations
-
 Spans arise naturally in [2] as a tree of spans are naturally formed by a Context
 Free grammar describing a given source file. They ALSO arise in the context of
 distributed systems from "event traces" 
@@ -76,38 +105,50 @@ We've seen partial orders formed by spans before! They arise naturally when
 thinking about concurrent process and spans of time. We want to know "does span A
 happen before or after span B?" but we only have a definitive answer if the spans
 don't overlap. 
-
+                                      
                                          ┌────────────────( B )───────────────┐  
                                          │                                    │  
                            ┌─────────────────────{ A }────────────────────┐      
                            │                                              │      
-    And here we test the " { " character (a far superior alternative to " } " ). 
-                         │   │                                          │   │    
-                         │   │                                          │   │    
-                         └─C─┘                                          └─D─┘    
+    And here we test the " { " character (a far *cooler* alternative to " } " ). 
+                         │   │                  │      │                │   │    
+                         │   │                  │      │                │   │    
+                         └─C─┘                  └*  E *┘                └─D─┘    
+                                                                                 
+This produces the following DAG (we only consider an irreflexive version of each relation)
+according to the `subset-of` relation:
 
-This produces the following DAG according to the `strict-subset-of` relation:
-
-    D -> B
     A
+    B
     C
+    D -> B
+    E -> A,B
 
 And the following Graph according to the `intersects` relation:
 
-    A - B - D
-    C - A
+    A — B,C,D,E
+    B — D,E
 
+    and by symmetry:
+
+    C — A
+    D — A,B
+    E — A,B
+    
 We could include the DAG produced by the `precedes` relation as well:
 
-    C -> B,D
+    A
+    B
+    C -> B,D,E
+    D
+    E -> D
 
 We can infer the graph of `intersects` (inter) from the `precedes` (<) DAG by noting that
 
     x<y => ! x inter y
     ! x<y AND ! y<x <=> x inter y   . 
 
-Together
-
+Together [WIP]
 
 See how these delimeters form spans which form partial order? Only the D span is
 completely contained within B; all other pairs have no direct `subset` relation.
@@ -131,6 +172,8 @@ Thus this should tell us how to go about searching for smaller input files.
 The DAG is formed only by the `subset` relation.
 The addition of the `intersects` relation complicates the situation, because it
 is a symmetric relation.
+
+### Deep in the weeds on Relations
 
 Common Properties of Relations:
 - symmetric     ; aRb => bRa
@@ -166,34 +209,38 @@ subset of       ;
 likes           ; 
 correlated with ; ??
 
-A `Span` has (at least) the following relations: `precedes`, `intersects`, `subset of`.
-We only need ~one of~ `precedes` ~or `intersects`~, because we can derive `intersects`
-from precedes (but not vice versa!). But we may prefer `intersects` because it could
-save a little work.
 
-    A precedes B => A !intersects B
-    A !precedes B and B !precedes A <=> A intersects B
+# Program Source
 
+Programs have tons of special structure that we can take advantage of, or ignore and risk
+wasting lots of effort. The current SotA for program minimization is a tool [Chisel][3]
+from UPenn. They also refer to this task as program "debloating". The current benchmark
+reducer is John Regehr's [c-reduce], which is designed for C/C++ code but apparently also
+works well on other (C-like?) languages which can take advantage of the initial reduction
+phases that don't rely on Clang's C/C++-specific analysis passes.
 
+# Python function arguments (Property based testing)
 
+The best example is [Hypothesis][hyp13], which is probably what used to be called [pydelta]? How does Hypothesis do reduction? They have a few extra fancy tricks up
+their sleeves like  in [invariant parameters](https://hypothesis.readthedocs.io/en/latest/reference/api.html#controlling-what-runs) produced during Phase.explain
 
-# linearizeability + DD
+  > After shrinking to a minimal failing example, Hypothesis will try to find parts of
+    the example – e.g. separate args to @given() – which can vary freely without changing
+    the result of that minimal failing example. If the automated experiments run without
+    finding a passing variation, we leave a comment in the final report:
 
-Are there examples of DD for finding linearizeablility issues with CSP?
-This would look like the following. I have a program which creates N state
-machines. It sends and receives messages from them adding in delays and message
-re-ordering. All the while it's checking the program invariants. 
-Let's NOT take this path, as it's too far removed from the ideas we've already
-implemented: the state machines (containers) under our control don't send messages
-only to us, but they speak to each other via a NetworkManager intermediary. We
-control each machine via it's interface as well as the NetworkManager. Our job
-is to find a Program which generates inconsistent states by looking for logic
-that _assumes_ that the order of messages sent is the order of messages received,
-and that the order of messages received is the order in which they are processed.
-And that the order in which they are processed is the order in which they will
-respond, and that the order in which they respond is the order in which you observe
-the responses.
-These assumptions can be implicitly encoded in a variety of ways.
+    test_x_divided_by_y(
+        x=0,  # or any other generated value
+        y=0,
+    )
+
+, and allowing failing cases to be stored in a database of your choosing. This is
+an interesting choice and I don't really get it...
+
+  > Hypothesis takes a philosophical stance that property-based testing libraries, not
+    the user, should be responsible for selecting the distribution. As an intentional
+    design choice, Hypothesis therefore lets you control the domain of inputs to your
+    test, but not the distribution.
 
 
 # What should WE do?
@@ -207,9 +254,9 @@ and new Args (potentially none) of the right type. We're trying to cut
 large swaths of the search space. Ideally we'd cut the program in half
 each time!
 
-    There may be a fundamental tension between creating programs that are DEEP
-    (the goal of our depth distribution experiments) and creating programs that
-    are easy to minimize!
+*There may be a fundamental tension between creating programs that are DEEP
+(the goal of our depth distribution experiments) and creating programs that
+are easy to minimize!*
 
 First, we can cut out all the program that isn't upstream of the condition/
 failure. Then, we can go about pruning the DAG. Wherever we use a Fun that
@@ -232,19 +279,78 @@ We need something for _DAG structured_ input.
 1. Delta Debugging for distinct connected components.
 2. 
 
+A `Span` has (at least) the following relations: `precedes`, `intersects`, `subset of`.
+We only need ~one of~ `precedes` ~or `intersects`~, because we can derive `intersects`
+from precedes (but not vice versa!). But we may prefer `intersects` because it could
+save a little work.
+
+    A precedes B => A !intersects B
+    A !precedes B and B !precedes A <=> A intersects B
+
+# Distributed System Traces (observed, not controlled!)
+
+Are there examples of DD for finding linearizeablility issues with CSP?
+This would look like the following. I have a program which creates N state
+machines. It sends and receives messages from them adding in delays and message
+re-ordering. All the while it's checking the program invariants. 
+Let's NOT take this path, as it's too far removed from the ideas we've already
+implemented: the state machines (containers) under our control don't send messages
+only to us, but they speak to each other via a NetworkManager intermediary. We
+control each machine via it's interface as well as the NetworkManager. Our job
+is to find a Program which generates inconsistent states by looking for logic
+that _assumes_ that the order of messages sent is the order of messages received,
+and that the order of messages received is the order in which they are processed.
+And that the order in which they are processed is the order in which they will
+respond, and that the order in which they respond is the order in which you observe
+the responses.
+These assumptions can be implicitly encoded in a variety of ways.
+
+[WIP]
+
+# Finding Bugs in the First Place
+
+## Z3 model code 
+
+[TypeFuzz](https://dl.acm.org/doi/pdf/10.1145/3485529)
+is interesting work on *program mutations* for finding bugs from 2021.
+
+  > Generative Type-Aware Mutation is a hybrid of mutation-based and grammar-based
+  fuzzing and features an infinite mutation space overcoming a major limitation of
+  OpFuzz, the state-of-the-art fuzzer for SMT solvers. We have realized Generative
+  Type-Aware Mutation in a practical SMT solver bug hunting tool, TypeFuzz. During our
+  testing period with TypeFuzz, we reported over 237 bugs in the state-of-the-art SMT
+  solvers Z3 and CVC4.
+
+  > The reports shown are reduced bug triggers after bug reduction with pydelta and
+  C-Reduce.
+
+References [pydelta],[C-Reduce]. 
+
+## SQL queries
+
+Database fuzzing
+
+[SQL98] is some of the first work using test-case reduction according to [c-reduce],
+even if this wasn't it's primary purpose. This [fig](pics/Screenshot 2025-04-11 at
+7.16.35 PM.png) is a simple diagram of the coverage problem.
+
+There is ongoing work on fuzzing databases [204] [205], although I guess it mostly focuses
+on query plan coverage and not on dist-sys correctness.
 
 # Biblio 
 
-[1] Zeller and R. Hildebrandt. "Simplifying and isolating failure-inducing input."
+[ZH02] Zeller and R. Hildebrandt. "Simplifying and isolating failure-inducing input."
 [2] Ghassan Misherghi and Zhendong Su. "HDD: Hierarchical Delta Debugging"
 [3] Chisel: Effective Program Debloating via Reinforcement Learning
+[3] https://pardisp.github.io/_papers/chisel-poster.pdf
 [200] Search-Based Software Testing: Past, Present and Future
 [201] A Survey on Software Fault Localization
 [202] The Art, Science, and Engineering of Fuzzing: A Survey
 [203] Examining Zero-Shot Vulnerability Repair with Large Language Models
+[204] Testing Database Engines via Query Plan Guidance
 
 [0]: https://blog.regehr.org/archives/527
-[1]: https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=988498
+[ZH02]: https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=988498
 [2]: https://users.cs.northwestern.edu/~robby/courses/395-495-2009-fall/hdd.pdf
 [3]: https://github.com/aspire-project/chisel
 [4]: https://people.kth.se/~artho/papers/idd.pdf
@@ -253,3 +359,10 @@ We need something for _DAG structured_ input.
 [201]: https://sci-hub.ru/10.1109/tse.2016.2521368
 [202]: https://ieeexplore.ieee.org/abstract/document/8863940
 [203]: https://ieeexplore.ieee.org/abstract/document/10179324
+[204]: https://www.semanticscholar.org/reader/ec682d9c7d68149dcd8932acd01a751f2f8b5611
+[205]: https://scholar.google.com/scholar?as_ylo=2021&q=Massive+Stochastic+Testing+of+SQL&hl=en&as_sdt=0,9
+[pydelta]: missing!?
+[c-reduce]: https://blog.regehr.org/archives/1678
+[SQL98]: https://www.semanticscholar.org/paper/Massive-Stochastic-Testing-of-SQL-Slutz/74b2c1bce3963fbb1300dc0995b9e275f3393cb9?p2df
+[hyp13]: https://hypothesis.readthedocs.io/en/latest/
+[WIP]: WorkInProgress
