@@ -5,3 +5,4 @@ cpu.prof
 proggen
 py/uv.lock
 tiger.csv
+.DS_Store

@@ -23,7 +23,7 @@ select count() from wiring;
 -- How many different `cheating` hyperparms did we try?
 select distinct cheating from wiring limit 5;
 
-    -- Uneven counts?
+-- Uneven counts?
 select wr_decay, prog_l, sum(count) from wiring
 group by wr_decay, prog_l
 ;
@@ -47,24 +47,20 @@ order by wr_decay, depth/10
 limit 50
 ;
 
-
-
-
-
--- x=depth y=count c=wr_decay row=cheating
+-- x=depth y=count c=wr_decay col=cheating share=Xy
 select depth, count, wr_decay, cheating
 from wiring
+order by cheating
 limit 5000
 ;
 
-    -- x=depth y=count c=prog_l row=cheating
+-- x=depth y=count c=prog_l col=cheating share=Xy
 select depth, count, prog_l, cheating
 from wiring
 where wr_decay = 0.1
+order by cheating
 limit 5000
 ;
-
-
 
 create table calaban as
 select *, 'zero' as wr_decay from wiring where wr_nearby = 0 

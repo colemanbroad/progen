@@ -1,5 +1,6 @@
 
 Synonyms in the literature:
+
 - reduction
 - shrinking
 - minimization
@@ -22,8 +23,9 @@ point we manage to repro the failure then we discard the unsued sequence and res
 otherwise at the of the `2n` test cases we double `n *= 2` and repeat.
 
 The idea behind `ddmin` is so broad that it cries out for generalizations beyond strings
-of characters to data with more structure. The best summary of the history of test-case reduction and generalizations of delta debuggin can be found on John Regehr's
-blog posts [0],[c-reduce]. Regehr says this about the original Zeller paper,
+of characters to data with more structure. The best summary of the history of test-case
+reduction and generalizations of delta debuggin can be found on John Regehr's blog posts
+[0],[c-reduce]. Regehr says this about the original Zeller paper,
 
   > The enduring value of the paper is to popularize and assign a name
   to the idea of using a search algorithm to improve the quality of
@@ -63,9 +65,9 @@ directly on program IR*.
 How can `ddmin` best be applied to data with structure beyond that of a string of chars?
 
 There is has been continuous research on this topic since [ZH02] with perhaps the most
-successful variant being Hierarchical Delta Debugging [HDD][2] (HDD), wihch is designed
+successful variant being Hierarchical Delta Debugging [HDD], wihch is designed
 for tree-structured inputs and requires knowledge of a (context-free) grammar describing
-the input. [HDD][2] takes a coarse-to-fine ablation approach where first the top level
+the input. [HDD] takes a coarse-to-fine ablation approach where first the top level
 nodes in the parse tree are removed before moving down the tree. It can be applied to
 program source by applying the parser and running HDD on the resulting AST. However this
 approach breaks down when the input format allows for defining *references* that allow for
@@ -73,8 +75,8 @@ one location to point to a different span of the input. Obviously, this is perva
 programming languages and in practice means that a naive application of HDD will lead to a
 large number of dangling references, potentially masking the true source of failure.
 
-Additional techniques discussed in [0] include iterative delta debugging[4] and
-Lithium[5]. Lithium in particular does two things I really like. First, instead
+Additional techniques discussed in [0] include iterative delta debugging[idd10] and
+Lithium[lith09]. Lithium in particular does two things I really like. First, instead
 of referring to test cases as "failing" or "passing" they refer to them as being
 "interesting" or "uninteresting", which is a generalization that Antithesis has also
 made. Second they have a nice definition of the "monotonicity" condition under which their
@@ -90,15 +92,16 @@ something like that. You can imagine asking the same question about sets of pixe
 
 # DAGs 
 
-In the comments around [0] a user proposes a more flexible version of [2] that works
+In the comments around [0] a user proposes a more flexible version of [HDD] that works
 with DAGs intead of trees. The idea is that you have a linear thing (a source file) and
 you have _guesses_ as to which chunks of the file are related in some way e.g. you make
 guesses as to potential grammars. If we _knew_ the grammar of the file (which delimiters
 are used to increase the scope) we would be able to form a parse tree (assuming the
 grammar doesn't allow defining references). But if we don't know the delimiters we can
-still guess and maybe our guesses overlap each other. Thus we've got potentially overlapping spans of source and these naturally form a partial order `A subset B`.
+still guess and maybe our guesses overlap each other. Thus we've got potentially
+overlapping spans of source and these naturally form a partial order `A subset B`.
 
-Spans arise naturally in [2] as a tree of spans are naturally formed by a Context
+Spans arise naturally in [HDD] as a tree of spans are naturally formed by a Context
 Free grammar describing a given source file. They ALSO arise in the context of
 distributed systems from "event traces" 
 We've seen partial orders formed by spans before! They arise naturally when
@@ -176,44 +179,48 @@ is a symmetric relation.
 ### Deep in the weeds on Relations
 
 Common Properties of Relations:
-- symmetric     ; aRb => bRa
-- asymmetric    ; aRb => !bRa
-- antisymmetric ; aRb AND bRa => a = b (this is a weird one. it references `equals` explicitly?!)
-- transitive    ; aRb AND bRc => aRc
-- intransitive  ; aRb AND bRc => !aRc
-- reflexive     ; aRa forall a (this is also a werid one. it's not an implication. it's telling you literally what pairs are in the relation).
-- irreflexive   ; !aRa forall a
 
-Relations are equivalent to DiGraphs (maybe with 2-cycles).
-Symmetric Relations (intersects) are equivalent to Graphs (maybe with 1-cycles!?)
-Asymmetric Relations (child of) are equivalent to Digraphs WITHOUT 2-cycles.
-Weak Partial Orders (<=) are reflexive, asymmetric and transitive, thus they contain all 1-cycles.
-Strict Partial Orders (<, descendant of) are a special case of Asymmetric Relation without ANY cycles.
-PO's can be represented as DAGs.
-A Total Order is equivalent to a Chain.
-There are many (most!) relations which are neither symmetric NOR asymmetric! E.g. "A likes B".
-We can define multiple relations on a set of elements, resulting in multiple
-coexisting (Di)Graphs.
 
-The `intersects` relation is symmetric (representable by a graph).
-The `subset` relation is partial order.
+Property      | Definition
+--------      | ----------
+symmetric     | aRb => bRa
+asymmetric    | aRb => !bRa
+antisymmetric | aRb AND bRa => a = b (this is a weird one. it references `equals` explicitly?!)
+transitive    | aRb AND bRc => aRc
+intransitive  | aRb AND bRc => !aRc
+reflexive     | aRa forall a[^fn2]
+irreflexive   | !aRa forall a
 
-Relation        ; Properties
-equal to        ; symmetric, reflexive, transitive
-not equal to    ; asymmetric, irreflexive, ~transitive~
-child of        ; asymmetric, irreflexive, intransitive
-descendant of   ; 
-related to      ; 
-intersects      ; 
-subset of       ; 
-likes           ; 
-correlated with ; ??
+[^fn2]: This is also a werid one. It's not an implication. It's telling you literally what
+pairs are in the relation.
+
+- Relations are equivalent to DiGraphs (maybe with 2-cycles).
+- Symmetric Relations (e.g. intersects) are equivalent to Graphs (maybe with 1-cycles!?)
+- Asymmetric Relations (e.g. child of) are equivalent to Digraphs WITHOUT 2-cycles.
+- Weak Partial Orders (e.g. <=) are reflexive, asymmetric and transitive, thus they contain all 1-cycles.
+- Strict Partial Orders (e.g. <, descendant of) are a special case of Asymmetric Relation without ANY cycles.
+- PO's can be represented as DAGs.
+- A Total Order is equivalent to a Chain.
+- There are many (most!) relations which are neither symmetric NOR asymmetric! E.g. "A likes B".
+- We can define multiple relations on a set of elements, resulting in multiple coexisting (Di)Graphs.
+
+Relation        | Properties
+--------        | ----------
+equal to        | symmetric, reflexive, transitive
+not equal to    | asymmetric, irreflexive, ~~transitive~~
+child of        | asymmetric, irreflexive, intransitive
+descendant of   | 
+related to      | 
+intersects      | 
+subset of       | 
+likes           | 
+correlated with | ??
 
 
 # Program Source
 
 Programs have tons of special structure that we can take advantage of, or ignore and risk
-wasting lots of effort. The current SotA for program minimization is a tool [Chisel][3]
+wasting lots of effort. The current SotA for program minimization is a tool [Chisel][3], [3a]
 from UPenn. They also refer to this task as program "debloating". The current benchmark
 reducer is John Regehr's [c-reduce], which is designed for C/C++ code but apparently also
 works well on other (C-like?) languages which can take advantage of the initial reduction
@@ -221,8 +228,11 @@ phases that don't rely on Clang's C/C++-specific analysis passes.
 
 # Python function arguments (Property based testing)
 
-The best example is [Hypothesis][hyp13], which is probably what used to be called [pydelta]? How does Hypothesis do reduction? They have a few extra fancy tricks up
-their sleeves like  in [invariant parameters](https://hypothesis.readthedocs.io/en/latest/reference/api.html#controlling-what-runs) produced during Phase.explain
+The best example is [Hypothesis][hyp13], which is probably what used to be called [pydelta]? How
+does Hypothesis do reduction? They have a few extra fancy tricks up their sleeves like in [invariant
+parameters] produced during the `explain` phase? 
+
+[invariant parameters]: https://hypothesis.readthedocs.io/en/latest/reference/api.html#controlling-what-runs
 
   > After shrinking to a minimal failing example, Hypothesis will try to find parts of
     the example – e.g. separate args to @given() – which can vary freely without changing
@@ -307,12 +317,24 @@ These assumptions can be implicitly encoded in a variety of ways.
 
 [WIP]
 
-# Finding Bugs in the First Place
+# Fuzzing
+
+## C-Smith
+
+With [c-smith] Regehr generates C programs and [guided tree search][gts21] tries to
+balance the "embedded decision tree" corresponding to that program.
+
+  > For certain well-structured special cases, such as generating strings from a regular
+  grammar, algorithms exist to generate strings with uniform probability, but it is easy
+  to see that in the general case, no such algorithm can exist. The proof of this is
+  handwavy, but observe that an arbitrary-sized subtree can lurk past every unexplored
+  edge in the decision tree. Without prior knowledge of the tree shape, there is simply no
+  way to know which unexplored branches lead to one or two leaves and which lead to a vast
+  number of leaves.
 
 ## Z3 model code 
 
-[TypeFuzz](https://dl.acm.org/doi/pdf/10.1145/3485529)
-is interesting work on *program mutations* for finding bugs from 2021.
+[TypeFuzz] is interesting work on *program mutations* for finding bugs from 2021.
 
   > Generative Type-Aware Mutation is a hybrid of mutation-based and grammar-based
   fuzzing and features an infinite mutation space overcoming a major limitation of
@@ -328,8 +350,6 @@ References [pydelta],[C-Reduce].
 
 ## SQL queries
 
-Database fuzzing
-
 [SQL98] is some of the first work using test-case reduction according to [c-reduce],
 even if this wasn't it's primary purpose. This [fig](pics/Screenshot 2025-04-11 at
 7.16.35 PM.png) is a simple diagram of the coverage problem.
@@ -339,30 +359,49 @@ on query plan coverage and not on dist-sys correctness.
 
 # Biblio 
 
-[ZH02] Zeller and R. Hildebrandt. "Simplifying and isolating failure-inducing input."
-[2] Ghassan Misherghi and Zhendong Su. "HDD: Hierarchical Delta Debugging"
-[3] Chisel: Effective Program Debloating via Reinforcement Learning
-[3] https://pardisp.github.io/_papers/chisel-poster.pdf
-[200] Search-Based Software Testing: Past, Present and Future
-[201] A Survey on Software Fault Localization
-[202] The Art, Science, and Engineering of Fuzzing: A Survey
-[203] Examining Zero-Shot Vulnerability Repair with Large Language Models
-[204] Testing Database Engines via Query Plan Guidance
+[ZH02]: https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=988498
+Zeller and R. Hildebrandt. "Simplifying and isolating failure-inducing input."  
+
+[HDD]: https://users.cs.northwestern.edu/~robby/courses/395-495-2009-fall/hdd.pdf
+Ghassan Misherghi and Zhendong Su. "HDD: Hierarchical Delta Debugging"  
+
+[3]: https://github.com/aspire-project/chisel
+Chisel: Effective Program Debloating via Reinforcement Learning
+
+[204]: https://www.semanticscholar.org/reader/ec682d9c7d68149dcd8932acd01a751f2f8b5611
+Testing Database Engines via Query Plan Guidance  
 
 [0]: https://blog.regehr.org/archives/527
-[ZH02]: https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=988498
-[2]: https://users.cs.northwestern.edu/~robby/courses/395-495-2009-fall/hdd.pdf
-[3]: https://github.com/aspire-project/chisel
-[4]: https://people.kth.se/~artho/papers/idd.pdf
-[5]: https://www.squarefree.com/lithium/algorithm.html
-[200]: https://ieeexplore.ieee.org/abstract/document/5954405
-[201]: https://sci-hub.ru/10.1109/tse.2016.2521368
-[202]: https://ieeexplore.ieee.org/abstract/document/8863940
-[203]: https://ieeexplore.ieee.org/abstract/document/10179324
-[204]: https://www.semanticscholar.org/reader/ec682d9c7d68149dcd8932acd01a751f2f8b5611
+[3a]: https://pardisp.github.io/_papers/chisel-poster.pdf  
+[idd10]: https://people.kth.se/~artho/papers/artho-idd-10.pdf
+[lith09]: https://www.squarefree.com/lithium/algorithm.html
 [205]: https://scholar.google.com/scholar?as_ylo=2021&q=Massive+Stochastic+Testing+of+SQL&hl=en&as_sdt=0,9
 [pydelta]: missing!?
 [c-reduce]: https://blog.regehr.org/archives/1678
 [SQL98]: https://www.semanticscholar.org/paper/Massive-Stochastic-Testing-of-SQL-Slutz/74b2c1bce3963fbb1300dc0995b9e275f3393cb9?p2df
 [hyp13]: https://hypothesis.readthedocs.io/en/latest/
 [WIP]: WorkInProgress
+[TypeFuzz]: https://dl.acm.org/doi/pdf/10.1145/3485529
+[gts21]: https://github.com/regehr/guided-tree-search
+[c-smith]: https://github.com/csmith-project/csmith
+
+# Wip
+
+[PDD21]: https://xiongyingfei.github.io/papers/FSE21a.pdf
+
+[RLDD18]: https://chisel.cis.upenn.edu/papers/ccs18.pdf
+
+[200]: https://ieeexplore.ieee.org/abstract/document/5954405
+Search-Based Software Testing: Past, Present and Future  
+
+[201]: https://sci-hub.ru/10.1109/tse.2016.2521368
+A Survey on Software Fault Localization  
+
+[202]: https://ieeexplore.ieee.org/abstract/document/8863940
+The Art, Science, and Engineering of Fuzzing: A Survey  
+
+[203]: https://ieeexplore.ieee.org/abstract/document/10179324
+Examining Zero-Shot Vulnerability Repair with Large Language Models  
+
+[flakey21]: https://dl.acm.org/doi/fullHtml/10.1145/3476105#Bib0057
+A survey of flakey tests
