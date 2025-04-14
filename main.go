@@ -17,10 +17,9 @@ func main() {
 	}
 
 	// deltaDebug()
-	testDeltaD()
 
 	// benchmarkSampleProgram()
-	// runPow2()
+	runPow2()
 	// runWire()
 	// runGenetic()
 }

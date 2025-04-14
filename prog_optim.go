@@ -121,26 +121,9 @@ outer:
 	return min
 }
 
-func testDeltaD() {
-	input := make([]int, 2500)
-	input[0] = 1
-	input[1000] = 2
-	input[2000] = 3
-	input[2499] = 5
-	test := func(s []int) bool {
-		b1 := slices.Contains(s, 1)
-		b2 := slices.Contains(s, 2)
-		b3 := slices.Contains(s, 3)
-		b4 := slices.Contains(s, 5)
-		return b1 && b2 && b3 && b4
-	}
-	result := deltaD(input, test)
-	_ = result
-}
+// func hasSubseq[T comparable](orig, sub []T) (start, stop int) {
 
-func hasSubseq[T comparable](orig, sub []T) (start, stop int) {
-
-}
+// }
 
 func intmin(a, b int) int {
 	if a < b {

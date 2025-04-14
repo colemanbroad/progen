@@ -260,11 +260,14 @@ But also, [Go is my hammer](https://news.ycombinator.com/item?id=41223902).
 # Relevant Work
 
 Program Synthesis
-https://cs.nyu.edu/~davise/
-https://cs.nyu.edu/~davise/rck/intro.pdf
-https://deoxyribose.github.io/No-Shortcuts-to-Knowledge/#learning-as-probabilistic-program-synthesis
-https://evanthebouncy.github.io/program-synthesis-minimal/
-https://www.reddit.com/r/MachineLearning/comments/y378kk/p_a_minimalist_guide_to_program_synthesis/
+
+- https://cs.nyu.edu/~davise/
+- https://cs.nyu.edu/~davise/rck/intro.pdf
+- https://deoxyribose.github.io/No-Shortcuts-to-Knowledge/#learning-as-probabilistic-program-synthesis
+- https://evanthebouncy.github.io/program-synthesis-minimal/
+- https://www.reddit.com/r/MachineLearning/comments/y378kk/p_a_minimalist_guide_to_program_synthesis/
+
+- [Go interpreter for codegen eval](https://github.com/traefik/yaegi)
 
 # Go testing and sometimes assertions
 
