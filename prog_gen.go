@@ -68,13 +68,23 @@ func evalStatement(stmt Statement, locals ValueMap) {
 	// TODO: avoid alloc: make this fix-size array?
 	args := make([]reflect.Value, 0)
 	for _, a := range stmt.argsyms {
-		args = append(args, reflect.ValueOf(locals[a].value))
+		v, ok := locals[a]
+		if !ok {
+			return
+		}
+		args = append(args, reflect.ValueOf(v.value))
 	}
 
 	// fmt.Println("f, g, args", f, g, args)
 	// printProgram(Program{stmt}, Info)
 
 	// return val cast to `any` type aka Interface()
+
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("We called with args %v and func g = %v ", args, g)
+		}
+	}()
 	r = g.Call(args)[0].Interface()
 
 	// Here's where we can introduce the logic of "any" types? generic types?

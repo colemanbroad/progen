@@ -6,7 +6,7 @@
 select name, type FROM sqlite_master
 ;
 
--- Quick snapshot of the main table and columns.
+    -- Quick snapshot of the main table and columns.
 select *, count() from wire_pow_of_two
 group by campaign_id
 ;

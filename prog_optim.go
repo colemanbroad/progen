@@ -116,13 +116,42 @@ outer:
 		}
 		n = intmin(2*n, l)
 	}
+	return min
+}
+
+func deltaDPrograms(input Program, test func(s Program) bool) Program {
+	if !test(input) {
+		fmt.Println("The input doesn't meet the condition!")
+		fmt.Println(input)
+		return nil
+	}
+	min := slices.Clone(input)
+	n := 2
+outer:
+	for n <= len(min) {
+		l := len(min)
+		for i := range n {
+			a := int(i * l / n)
+			b := int((i + 1) * l / n)
+			sub := slices.Clone(min)
+			sub = slices.Delete(sub, a, b)
+			if test(sub) {
+				min = sub
+				n = 2
+				continue outer
+			}
+		}
+		if n == l {
+			break
+		}
+		n = intmin(2*n, l)
+	}
 	fmt.Println("We found a minimal sequence and it is....")
 	fmt.Println(min)
 	return min
 }
 
 // func hasSubseq[T comparable](orig, sub []T) (start, stop int) {
-
 // }
 
 func intmin(a, b int) int {

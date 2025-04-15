@@ -33,13 +33,13 @@ func addBasicMathLib() {
 	f = func(a, b int) int { return a * b }
 	addFuncToLibrary(f, "mul", []Type{"int", "int"}, "int")
 
-	f = func(a, b int) int {
-		c := b % 64
-		c = sign(c) * c
-		r := a << c
-		return r
-	}
-	addFuncToLibrary(f, "<<", []Type{"int", "int"}, "int")
+	// f = func(a, b int) int {
+	// 	c := b % 64
+	// 	c = sign(c) * c
+	// 	r := a << c
+	// 	return r
+	// }
+	// addFuncToLibrary(f, "<<", []Type{"int", "int"}, "int")
 
 	// f = func(isPos bool) float64 {
 	// 	x := rand.Float64()

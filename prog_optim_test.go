@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math/rand/v2"
 	"slices"
 	"testing"
@@ -122,5 +123,39 @@ func TestDeltaD(t *testing.T) {
 	result := deltaD(input, test)
 	if !slices.Equal(result, target) {
 		t.Error("DeltaD failed on target: ", target)
+	} else {
+		// fmt.Println("We found a minimal sequence and it is....")
+		// fmt.Println(result)
 	}
+}
+
+func TestDeltaDProgram(t *testing.T) {
+	sp := newSampleParams()
+	sp.Program_length = 100
+	input := sampleProgram(sp)
+	// why []Statement and not Program is loadbearing?
+	test := func(p []Statement) bool {
+		vm, _ := evalProgram(p)
+		b1 := false
+		for _, v := range vm {
+			if v.value.(int) == 73 {
+				b1 = true
+			}
+		}
+		return b1
+	}
+	for !test(input) {
+		input = sampleProgram(sp)
+	}
+	vm, _ := evalProgram(input)
+	fmt.Println("The starter program:")
+	printProgramAndValues(input, vm)
+	result := deltaD(input, test)
+	fmt.Println("The resulting program:")
+	vm, _ = evalProgram(result)
+	printProgramAndValues(result, vm)
+
+	// if !slices.Equal(result, target) {
+	// 	t.Error("DeltaD failed on target: ", target)
+	// }
 }

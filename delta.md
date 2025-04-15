@@ -176,7 +176,7 @@ The DAG is formed only by the `subset` relation.
 The addition of the `intersects` relation complicates the situation, because it
 is a symmetric relation.
 
-### Deep in the weeds on Relations
+## Deep in the weeds on Relations
 
 Common Properties of Relations:
 
@@ -225,6 +225,14 @@ from UPenn. They also refer to this task as program "debloating". The current be
 reducer is John Regehr's [c-reduce], which is designed for C/C++ code but apparently also
 works well on other (C-like?) languages which can take advantage of the initial reduction
 phases that don't rely on Clang's C/C++-specific analysis passes.
+
+*Does `ddmin` work on a `Program = []Statment`?*
+
+Yes, we can do minimization this way.
+When our test() func just looks to see if a certain value is present in ValueMap then the 
+result is a program with every Statement removed that generates a Sym which isn't 
+a transitive dependency of the target Value.
+
 
 # Python function arguments (Property based testing)
 
