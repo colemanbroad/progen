@@ -5,6 +5,7 @@ import "fmt"
 func gobTheBuilder(n int) {
 	sp := newSampleParams()
 	sp.Program_length = 1000
+	sp.Wire_nearby = false
 	input := sampleProgram(sp)
 	// why []Statement and not Program is loadbearing?
 	test := func(p []Statement) bool {
