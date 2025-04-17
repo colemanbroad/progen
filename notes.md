@@ -616,4 +616,20 @@ one sense, it may maintain a single dist-sys state e.g. (leader, follower, voter
 
 [delta.md]
 
+# Hierarchical models
 
+I think the only way that I can think of at the moment to achieve what I believe Dave wants, and what will give us interesting programs across an arbitrary set of margins is the following:
+
+- We enumerate or sample a sequence of meta-programs
+- For each metaprogram we sample a program []Stmt in a particular way, e.g. using a subset of fragments, with weird wiring, or using a certain pattern. Each sub-program is concatenated to form the full program.
+
+This makes a lot possible, but it makes everything more complicated.
+First, we have to think of and implement a set of meta-fragments or patterns.
+Then we have to implement a mata-program sampler which enumerates meta programs and samples them.
+
+How to do credit assignment?
+
+What kind of grammar for metaprograms? Are all pieces independent? Is there a state machine that tells me which pieces are allowed? Or is there a stack-like context that tells me which pieces are allowed? Can the pieces set/unset arbitrary state?
+Does each piece return a Program, or are there other types of pieces that *only* set context? E.g. imagine taking the product
+between Pieces that return state, pieces that control the set of available fragments, and pieces that control wiring.
+Are these all independent? 

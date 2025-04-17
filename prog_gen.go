@@ -172,6 +172,7 @@ func sampleProgram(sp SampleParams) Program {
 	local_catalog := NewCatalog(sp.Program_length)
 	depthmap := make(map[Sym]int)
 
+	// The program prefix can be just another section in the hierarchy.
 	if program_prefix != nil {
 		prefix := CopyProgram(program_prefix)
 		for line_no, stmt := range prefix {
@@ -197,16 +198,11 @@ stmtLoop:
 			fn:      f,
 			argsyms: make([]Sym, len(f.ptypes)),
 			outsym:  Sym(fmt.Sprintf("v%v", pl)),
-			// outsym:  "void_sym",
 		}
-		// sample a random sym of the appropriate type from the Program above for each argument
+		// sample a random sym of the appropriate type for each argument
 		if len(f.ptypes) != 0 {
 			for i, ptype := range f.ptypes {
 				losyms := local_catalog.syms_inv[ptype]
-				// all_syms, _ := local_catalog.syms_inv[ptype] // TODO: revert SymLine idea. or add Values as SymLines with Line = -1 ?
-				// all_syms = append(global_catalog.syms_inv[ptype], all_syms...)
-				// WARN: This is necessary because of exponential sampling. We have to make
-				// an independent decision about what probability to assign to syms from value_library vs the program body.
 				var arg Sym
 				if len(losyms) == 0 {
 					glsyms := global_catalog.syms_inv[ptype]
@@ -217,31 +213,22 @@ stmtLoop:
 					arg = glsyms[n].sym
 				} else {
 					if sp.Wire_nearby {
-						// Exponentially distributed sampling.
 						m := len(losyms)
 						n := m - int(TruncatedExponentialSampler(nil, sp.WireDecayLen, float64(m))) - 1
 						arg = losyms[n].sym
 					} else {
-						// n = (idx * 103823) % len(symtypes)
-						// idx = idx + 1 // TODO: change the math here to control the wiring
 						n := rand.Intn(len(losyms))
 						arg = losyms[n].sym
 					}
 				}
-				// if cheating == ZeroValue && rand.Float64() < 1.0/(float64(len(program)+1)) {
-				// 	arg = Sym("Zero")
-				// }
-				stmt.argsyms[i] = arg //= append(stmt.argsyms, arg)
+				stmt.argsyms[i] = arg
 			}
 		}
-		// stmt.outsym = gensym.gen()
 		depthmap[stmt.outsym] = getDepth(depthmap, stmt.argsyms...)
 		local_catalog.add(stmt.outsym, stmt.fn.rtype, uint16(len(program))) // WARN: will break when len(prog) >= 2^16
 		program[pl] = stmt
 		pl += 1
-		// program = append(program, stmt)
 	}
-	// fmt.Print(depthmap)
 	return program
 }
 
@@ -434,4 +421,8 @@ func shortestFuncPath(path []string, target_func string) []string {
 		}
 	}
 	return bestpath
+}
+
+func spSwarm(n, m int) Program {
+
 }
