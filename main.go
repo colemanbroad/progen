@@ -9,8 +9,9 @@ import (
 var dbname *string
 
 func main() {
-	dbname = flag.String("d", "", "Database to connect")
-	gob := flag.Int("gob", 73, "Can we build it? Yes we can!")
+	dbname = flag.String("d", "", "database to connect")
+	gob := flag.Int("gob", -1, "Can we build it? Yes we can!")
+	lib := NewLib()
 	flag.Parse()
 	if flag.NFlag() == 0 {
 		fmt.Println("dbname = ", *dbname)
@@ -18,18 +19,22 @@ func main() {
 		return
 	}
 
-	if gob != nil {
+	if *gob != -1 {
 		fn_library = make(map[Sym]Fun)
 		value_library = make(map[Sym]Value)
-		addBasicMathLib()
+		lib.addBasicMathLib()
 		// delete(fn_library, "one")
 		gobTheBuilder(*gob)
 		os.Exit(0)
 	}
-	// deltaDebug()
 
+	p := sample2lvl()
+	vm, _ := evalProgram(p)
+	printProgramAndValues(p, vm)
+
+	// deltaDebug()
 	// benchmarkSampleProgram()
-	runPow2()
+	// runPow2()
 	// runWire()
 	// runGenetic()
 }

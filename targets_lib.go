@@ -18,28 +18,28 @@ func sign(x int) int {
 	return 1
 }
 
-func addBasicMathLib() {
+func (lib Library) addBasicMathLib() {
 	var f any
 
 	// f = func() int { return rand.Intn(10) }
-	// addFuncToLibrary(f, "rand", []Type{}, "int")
+	// lib.addFuncToLibrary(f, "rand", []Type{}, "int")
 
 	f = func() int { return 1 }
-	addFuncToLibrary(f, "one", []Type{}, "int")
+	lib.addFuncToLibrary(f, "one", []Type{}, "int")
 
 	f = func(a, b int) int { return a + b }
-	addFuncToLibrary(f, "add", []Type{"int", "int"}, "int")
+	lib.addFuncToLibrary(f, "add", []Type{"int", "int"}, "int")
 
 	f = func(a, b int) int { return a * b }
-	addFuncToLibrary(f, "mul", []Type{"int", "int"}, "int")
+	lib.addFuncToLibrary(f, "mul", []Type{"int", "int"}, "int")
 
-	// f = func(a, b int) int {
-	// 	c := b % 64
-	// 	c = sign(c) * c
-	// 	r := a << c
-	// 	return r
-	// }
-	// addFuncToLibrary(f, "<<", []Type{"int", "int"}, "int")
+	f = func(a, b int) int {
+		c := b % 64
+		c = sign(c) * c
+		r := a << c
+		return r
+	}
+	lib.addFuncToLibrary(f, "<<", []Type{"int", "int"}, "int")
 
 	// f = func(isPos bool) float64 {
 	// 	x := rand.Float64()
@@ -48,5 +48,5 @@ func addBasicMathLib() {
 	// 	}
 	// 	return x
 	// }
-	// addFuncToLibrary(f, "samplePosOrNeg", []Type{"bool"}, "f64")
+	// lib.addFuncToLibrary(f, "samplePosOrNeg", []Type{"bool"}, "f64")
 }

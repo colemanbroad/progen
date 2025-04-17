@@ -366,7 +366,7 @@ const (
 // 	}
 // }
 
-func RunGenetic(p GPParams) {
+func (lib Library) RunGenetic(p GPParams) {
 
 	program_history = make([]ProgramHistoryRow, p.N_programs*p.N_rounds)
 	programs := make([]Program, p.N_programs)
@@ -375,7 +375,7 @@ func RunGenetic(p GPParams) {
 
 	// initialize programs
 	for i := range p.N_programs {
-		prog := sampleProgram(newSampleParams())
+		prog := lib.sampleProgram(newSampleParams())
 		validateOrFail(prog, fmt.Sprintf("Failed creating sample program %v .\n", i))
 		programs[i] = prog
 	}
@@ -412,9 +412,9 @@ func RunGenetic(p GPParams) {
 			case 0:
 				new_programs[k] = programs[k]
 			case 1:
-				new_programs[k] = mutate(best_programs[n], best_programs)
+				new_programs[k] = lib.mutate(best_programs[n], best_programs)
 			case 2:
-				new_programs[k] = sampleProgram(newSampleParams())
+				new_programs[k] = lib.sampleProgram(newSampleParams())
 			}
 		}
 
@@ -462,12 +462,12 @@ func reshuffle(oprog Program) Program {
 	}
 }
 
-func mutate(p Program, best_programs []Program) Program {
+func (lib Library) mutate(p Program, best_programs []Program) Program {
 	r := rand.Float32()
 	switch {
 	case r < 0.1:
 		// fmt.Println("sampleProgram_fromFragmentLib")
-		return sampleProgram(newSampleParams())
+		return lib.sampleProgram(newSampleParams())
 	case r < 0.2:
 		// fmt.Println("reshuffle")
 		return reshuffle(p)
@@ -591,3 +591,40 @@ func divide(prog Program) Program {
 //   - Does line 15 depend on line 12?
 //   - What set of lines does 16 depend on? What set depends on 16?
 //  Then the full alg would be:
+
+func ExampleDeltaDProgram() {
+	sp := newSampleParams()
+	sp.Program_length = 100
+	lib := NewLib()
+	lib.addBasicMathLib()
+	input := lib.sampleProgram(sp)
+	// why []Statement and not Program is loadbearing?
+	test := func(p []Statement) bool {
+		vm, _ := evalProgram(p)
+		b1 := false
+		for _, v := range vm {
+			if v.value.(int) == 73 {
+				b1 = true
+			}
+		}
+		return b1
+	}
+	for !test(input) {
+		input = lib.sampleProgram(sp)
+	}
+	vm, _ := evalProgram(input)
+	fmt.Println("The starter program:")
+	printProgramAndValues(input, vm)
+	result := deltaD(input, test)
+	fmt.Println("The resulting program:")
+	vm, _ = evalProgram(result)
+	printProgramAndValues(result, vm)
+
+	// if !slices.Equal(result, target) {
+	// 	t.Error("DeltaD failed on target: ", target)
+	// }
+}
+
+func runExamples() {
+	ExampleDeltaDProgram()
+}

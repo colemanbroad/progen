@@ -1,7 +1,6 @@
 -- .header on
 .mode col
 
-
 -- First, list all the tables.
 select name, type FROM sqlite_master
 ;
@@ -45,7 +44,8 @@ where cnt = 2
 
 -- Let's look at the reward over time. Does it look like the fancy
 -- wiring approaches find powers of two earlier and then peter out?
--- x=time y=logrew c=logrew row=decay
+-- I don't see it! But the table shows a small but clear difference.
+-- x=time y=logrew c=logrew col=decay
 select *, log(2, reward) as logrew
 from wire_pow_of_two
 where reward > 0
@@ -54,16 +54,21 @@ where reward > 0
 -- Plot cumulative log-reward over time. There is a clear advantage
 -- to the wiring schemes that prefer the recent program lines!
 -- x=time y=sum_reward c=_decay
+-- create view temp as 
 with
 A as (
-select *, log(2, reward) as logrew, cast(decay as text) _decay
-from wire_pow_of_two
-where reward > 0
+    select *, log(2, reward) as logrew, cast(decay as text) _decay
+    from wire_pow_of_two
+    where reward > 0
 )
 select *, sum(reward) over (partition by campaign_id order by time) "sum_reward"
 from A
 order by _decay
 ;
+
+
+select count() from temp
+group by campaign_id;
 
 -- Reward Cumulative Distribution
 -- Interesting how you don't see a massive difference in the plots or

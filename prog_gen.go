@@ -53,9 +53,16 @@ const (
 	Errr
 )
 
-var fn_library map[Sym]Fun
-var value_library map[Sym]Value
-var program_prefix Program // NOTE: when construcing the prefix we must uphold the constraints inherent in Program (vs UncheckedProgram)
+type Library struct {
+	fns  map[Sym]Fun
+	vals map[Sym]Value
+}
+
+var (
+	fn_library     map[Sym]Fun
+	value_library  map[Sym]Value
+	program_prefix Program // NOTE: when construcing the prefix we must uphold the constraints inherent in Program (vs UncheckedProgram)
+)
 
 func evalStatement(stmt Statement, locals ValueMap) {
 	var r any
@@ -124,27 +131,27 @@ func evalProgram(program Program) (values ValueMap, reward float64) {
 	return locals, delta
 }
 
-func addFuncToLibrary(f any, name string, ptypes []Type, rtype Type) {
+func (lib Library) addFuncToLibrary(f any, name string, ptypes []Type, rtype Type) {
 	fdef := Fun{
 		value:  f,
 		name:   name,
 		ptypes: ptypes,
 		rtype:  rtype,
 	}
-	fn_library[Sym(fdef.name)] = fdef
+	lib.fns[Sym(fdef.name)] = fdef
 }
 
-func sampleFuncFromLibrary() Fun {
+func (lib Library) sampleFuncFromLibrary() Fun {
 	keys := make([]Sym, 0)
 	// fmt.Println("fn_library = ", fn_library)
-	for k := range fn_library {
+	for k := range lib.fns {
 		keys = append(keys, k)
 	}
 	if len(keys) == 0 {
 		log.Fatalln("error: did you forget to add fragments to the library?")
 	}
 	k := keys[rand.Intn(len(keys))]
-	return fn_library[k]
+	return lib.fns[k]
 }
 
 type SampleParams struct {
@@ -165,7 +172,7 @@ func newSampleParams() SampleParams {
 // values we will have at our disposal at every point.
 // i.e. add lines conditional on what's already in the program.
 // Depends on globals: fn_library, value_library and program_prefix, but only fn_library must be non-nil.
-func sampleProgram(sp SampleParams) Program {
+func (lib Library) sampleProgram(sp SampleParams) Program {
 	// gensym := GenSym{idx: 0}
 	program := make(Program, sp.Program_length)
 	// TODO: use the Catalog with lineno info to have more control over initial wiring
@@ -183,8 +190,8 @@ func sampleProgram(sp SampleParams) Program {
 		}
 	}
 
-	global_catalog := NewCatalog(len(value_library))
-	for sym, val := range value_library {
+	global_catalog := NewCatalog(len(lib.vals))
+	for sym, val := range lib.vals {
 		global_catalog.add(sym, val.vtype, 0) // FIXME! line is wrong
 	}
 
@@ -193,7 +200,7 @@ func sampleProgram(sp SampleParams) Program {
 stmtLoop:
 	for pl < sp.Program_length {
 		var f Fun
-		f = sampleFuncFromLibrary()
+		f = lib.sampleFuncFromLibrary()
 		stmt := Statement{
 			fn:      f,
 			argsyms: make([]Sym, len(f.ptypes)),
@@ -421,8 +428,4 @@ func shortestFuncPath(path []string, target_func string) []string {
 		}
 	}
 	return bestpath
-}
-
-func spSwarm(n, m int) Program {
-
 }

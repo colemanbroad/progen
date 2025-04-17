@@ -202,12 +202,12 @@ func observe(m Map, s State) int {
 	return r
 }
 
-func add_pitsworld() {
+func add_pitsworld(lib Library) {
 	// map () -> Map -- gen new map
 	// start (map) -> State -- set starting position on map
 	// move (map, state, move) -> state -- update position, get reward, maybe die
-	addFuncToLibrary(start, "start", []Type{"Map"}, "State")
-	addFuncToLibrary(move, "move", []Type{"State", "Map", "int"}, "State")
-	addFuncToLibrary(newMap, "newMap", []Type{}, "Map")
-	addFuncToLibrary(observe, "observe", []Type{"Map", "State"}, "int")
+	lib.addFuncToLibrary(start, "start", []Type{"Map"}, "State")
+	lib.addFuncToLibrary(move, "move", []Type{"State", "Map", "int"}, "State")
+	lib.addFuncToLibrary(newMap, "newMap", []Type{}, "Map")
+	lib.addFuncToLibrary(observe, "observe", []Type{"Map", "State"}, "int")
 }

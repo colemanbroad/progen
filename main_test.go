@@ -9,23 +9,25 @@ import (
 	"time"
 )
 
-func TestBenchSampleProgram(t *testing.T) {
-	f, err := os.Create("cpu.prof")
-	if err != nil {
-		log.Fatal(err)
+func BenchmarkSampleProgram(b *testing.B) {
+	if false {
+		f, err := os.Create("cpu.prof")
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
 	}
-	pprof.StartCPUProfile(f)
-	defer pprof.StopCPUProfile()
-
-	fn_library = make(map[Sym]Fun)
-	addBasicMathLib()
+	lib := NewLib()
+	// fn_library = make(map[Sym]Fun)
+	lib.addBasicMathLib()
 	// addPeanoLib()
 	t0 := time.Now()
 	sp := newSampleParams()
 	for i := range 14 {
 		sp.Program_length = 1 << i
 		fmt.Println("program length: ", sp.Program_length)
-		prog := sampleProgram(sp)
+		prog := lib.sampleProgram(sp)
 		fmt.Println("time Gen: ", time.Now().Sub(t0))
 		t0 = time.Now()
 		evalProgram(prog)

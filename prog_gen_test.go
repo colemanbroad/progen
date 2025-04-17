@@ -21,7 +21,8 @@ func TestMain(m *testing.M) {
 	ErrorLog.SetOutput(file)
 
 	initPeanoLibrary()
-	addBasicMathLib()
+	lib := NewLib()
+	lib.addBasicMathLib()
 
 	// Run tests
 	code := m.Run()
@@ -45,12 +46,14 @@ func Test_TypeGraph_and_LibraryInverse(t *testing.T) {
 }
 
 func Test_BasicProgramGen(t *testing.T) {
+	lib := NewLib()
+	lib.addBasicMathLib()
 	for range 100 {
 		sp := newSampleParams()
 		if rand.Float32() < 0.5 {
 			sp.Wire_nearby = !sp.Wire_nearby
 		}
-		p1 := UncheckedProgram(sampleProgram(sp))
+		p1 := UncheckedProgram(lib.sampleProgram(sp))
 		program := Program(p1)
 		valmap, r_delta := evalProgram(program)
 		_, _ = valmap, r_delta
@@ -77,6 +80,10 @@ func Test_TruncatedExponential(t *testing.T) {
 }
 
 func Test_BasicProgramEval(t *testing.T) {
+	lib := NewLib()
+	lib.addBasicMathLib()
+	fn_library = lib.fns
+
 	program := Program{
 		Statement{
 			fn:      fn_library["one"],
@@ -98,9 +105,9 @@ func Test_BasicProgramEval(t *testing.T) {
 	values, _ := evalProgram(program)
 	v, exists := values["v3"]
 	if !exists {
-		t.Fail()
+		t.Error("v3 missing")
 	}
 	if !(reflect.ValueOf(v.value).Int() == 2) {
-		t.Fail()
+		t.Error("value of v3 != 2")
 	}
 }

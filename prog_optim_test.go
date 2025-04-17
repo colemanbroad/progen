@@ -1,15 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"math/rand/v2"
 	"slices"
 	"testing"
 )
 
 func TestReshuffle(t *testing.T) {
-	initPeanoLibrary()
-	prog := sampleProgram(newSampleParams())
+	lib := initPeanoLibrary()
+	prog := lib.sampleProgram(newSampleParams())
 	prog_mutated := reshuffle(prog)
 	// prog_mutated := point_mutate(prog)
 	// assert that sometimes prog != prog_mutated?
@@ -35,42 +34,43 @@ func TestReshuffle(t *testing.T) {
 // 	f.Fuzz(t_point_mutate)
 // }
 
-func initPeanoLibrary() {
-	fn_library = make(map[Sym]Fun)
-	addPeanoLib()
+func initPeanoLibrary() Library {
+	lib := NewLib()
+	lib.addPeanoLib()
+	return lib
 }
 
 func TestSampleProgramLong(t *testing.T) {
-	initPeanoLibrary()
+	lib := initPeanoLibrary()
 	for range 1000 {
-		p := sampleProgram(newSampleParams())
+		p := lib.sampleProgram(newSampleParams())
 		validateOrFail(p, "sampled direct")
 	}
 }
 
 func TestReshuffleLong(t *testing.T) {
-	initPeanoLibrary()
+	lib := initPeanoLibrary()
 	for range 1000 {
-		p := sampleProgram(newSampleParams())
+		p := lib.sampleProgram(newSampleParams())
 		p = reshuffle(p)
 		validateOrFail(p, "reshuffled")
 	}
 }
 
 func TestPointMutateLong(t *testing.T) {
-	initPeanoLibrary()
+	lib := initPeanoLibrary()
 	for range 1000 {
-		p := sampleProgram(newSampleParams())
+		p := lib.sampleProgram(newSampleParams())
 		p, _ = pointMutate(p)
 		validateOrFail(p, "mutated")
 	}
 }
 
 func TestBasicgenRewireLong(t *testing.T) {
-	initPeanoLibrary()
+	lib := initPeanoLibrary()
 	hadSuccess, hadFailure := false, false // tracks whether we achieved True and False returns (sometimes each)
 	for range 1000 {
-		p := sampleProgram(newSampleParams())
+		p := lib.sampleProgram(newSampleParams())
 		p, isSuccess := rewireBase(p)
 		hadSuccess = hadSuccess || isSuccess
 		hadFailure = hadFailure || !isSuccess
@@ -85,8 +85,8 @@ func TestBasicgenRewireLong(t *testing.T) {
 }
 
 func TestBasicgenComboLong(t *testing.T) {
-	initPeanoLibrary()
-	p := sampleProgram(newSampleParams())
+	lib := initPeanoLibrary()
+	p := lib.sampleProgram(newSampleParams())
 	for range 1000 {
 		x := rand.Float32()
 		switch {
@@ -127,35 +127,4 @@ func TestDeltaD(t *testing.T) {
 		// fmt.Println("We found a minimal sequence and it is....")
 		// fmt.Println(result)
 	}
-}
-
-func TestDeltaDProgram(t *testing.T) {
-	sp := newSampleParams()
-	sp.Program_length = 100
-	input := sampleProgram(sp)
-	// why []Statement and not Program is loadbearing?
-	test := func(p []Statement) bool {
-		vm, _ := evalProgram(p)
-		b1 := false
-		for _, v := range vm {
-			if v.value.(int) == 73 {
-				b1 = true
-			}
-		}
-		return b1
-	}
-	for !test(input) {
-		input = sampleProgram(sp)
-	}
-	vm, _ := evalProgram(input)
-	fmt.Println("The starter program:")
-	printProgramAndValues(input, vm)
-	result := deltaD(input, test)
-	fmt.Println("The resulting program:")
-	vm, _ = evalProgram(result)
-	printProgramAndValues(result, vm)
-
-	// if !slices.Equal(result, target) {
-	// 	t.Error("DeltaD failed on target: ", target)
-	// }
 }

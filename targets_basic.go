@@ -4,10 +4,22 @@ import (
 	"math"
 )
 
-var reward_buckets map[int]float64
-var reward []RewardTime
-var Reward_total float64
-var global_time int
+var (
+	reward_buckets map[int]float64
+	reward         []RewardTime
+	Reward_total   float64
+	global_time    int
+)
+
+var zero_value Value
+
+func init() {
+	zero_value = Value{
+		value: 0,
+		name:  "Zero",
+		vtype: "int",
+	}
+}
 
 type RewardTime struct {
 	Reward float64
@@ -28,8 +40,8 @@ func Found_reward(r float64, source string) {
 	// fmt.Println("found reward: ", r)
 }
 
-func addPowerOfTwo() {
-	addFuncToLibrary(isPowerOfTwo, "isPowerOfTwo", []Type{"int"}, "bool")
+func (lib Library) addPowerOfTwo() {
+	lib.addFuncToLibrary(isPowerOfTwo, "isPowerOfTwo", []Type{"int"}, "bool")
 }
 
 func isPowerOfTwo(n int) bool {
@@ -54,10 +66,10 @@ func isPowerOfTwo(n int) bool {
 	return is_power
 }
 
-func addPeanoLib() {
+func (lib Library) addPeanoLib() {
 	var f any
 	f = func(a int) int { return a + 1 }
-	addFuncToLibrary(f, "succ", []Type{"int"}, "int")
+	lib.addFuncToLibrary(f, "succ", []Type{"int"}, "int")
 	f = func() int { return 0 }
-	addFuncToLibrary(f, "zero", []Type{}, "int")
+	lib.addFuncToLibrary(f, "zero", []Type{}, "int")
 }

@@ -21,9 +21,17 @@ const (
 	ZeroOnlyOnce
 )
 
-func initPeano(cheating Cheating) {
-	fn_library = make(map[Sym]Fun)
-	addPeanoLib()
+func NewLib() Library {
+	return Library{
+		fns:  map[Sym]Fun{},
+		vals: map[Sym]Value{},
+	}
+}
+
+func initPeano(cheating Cheating) Library {
+	lib := NewLib()
+	// fn_library := make(map[Sym]Fun)
+	lib.addPeanoLib()
 	if cheating == ZeroOnlyOnce {
 		// NOTE: explicit make() init not needed for program_prefix?
 		program_prefix = Program{Statement{
@@ -47,15 +55,10 @@ func initPeano(cheating Cheating) {
 
 	} else if cheating == ZeroValue {
 		value_library = make(map[Sym]Value)
-		// TODO: How are we going to allow for ZeroValue in Programs
-		// with the same semantics as Values in Rust GenTactics?
-		value_library["Zero"] = Value{
-			value: 0,
-			name:  "Zero",
-			vtype: "int",
-		}
+		value_library[Sym(zero_value.name)] = zero_value
 		delete(fn_library, "zero")
 	}
+	return lib
 }
 
 // Cheating: Do we remove Zero from the Library after line 1 ? Peano Specific.
@@ -65,7 +68,7 @@ func runPeano() {
 	for _, c := range []Cheating{ZeroValue} {
 		for _, decay := range []float64{0.1, 1.0, 0.0} {
 			for _, proglen := range []int{10, 20, 50, 100} {
-				initPeano(Cheating(c))
+				lib := initPeano(Cheating(c))
 				sp := newSampleParams()
 				sp.Wire_nearby = true
 				if decay == 0.0 {
@@ -77,7 +80,7 @@ func runPeano() {
 				nprog := 1
 				vh := make(IntHistogram)
 				for range nprog {
-					prog := sampleProgram(sp)
+					prog := lib.sampleProgram(sp)
 					values, _ := evalProgram(prog)
 					printProgramAndValues(prog, values)
 					for _, v := range values {
@@ -111,8 +114,9 @@ func savePeano(sp SampleParams, nprog int, valuehist map[int]int, cheating Cheat
 
 // How does deeper wiring affect the Powers of Two distribution?
 func runPow2() {
-	fn_library = make(map[Sym]Fun)
-	addBasicMathLib()
+	// fn_library = make(map[Sym]Fun)
+	lib := NewLib()
+	lib.addBasicMathLib()
 	// addPowerOfTwo()
 	for _, proglen := range []int{100} {
 		for _, decay := range []float64{0.0, 0.1, 1.0} {
@@ -130,7 +134,7 @@ func runPow2() {
 			global_time = 0
 			for range 1 {
 				// fmt.Println("i = ", i)
-				prog := sampleProgram(sp)
+				prog := lib.sampleProgram(sp)
 				vals, _ := evalProgram(prog)
 				// printProgramAndValues(prog, vals)
 				stats.update(prog, vals)
@@ -173,16 +177,17 @@ func savePow2(sp SampleParams) {
 
 // How does mutation affect PowerOfTwo?
 func runGenetic() {
-	fn_library = make(map[Sym]Fun)
-	addBasicMathLib()
-	addPowerOfTwo()
+	// fn_library = make(map[Sym]Fun)
+	lib := NewLib()
+	lib.addBasicMathLib()
+	lib.addPowerOfTwo()
 	for range 20 {
 		init_history()
 		// init_maphistory()
 		init_reward()
 		// Init_campaign()
 		p := GPParams{N_rounds: 1000, N_programs: 20, Ltype: NoMut}
-		RunGenetic(p)
+		lib.RunGenetic(p)
 		saveGenetic(p)
 	}
 }
@@ -224,8 +229,9 @@ func benchmarkSampleProgram() {
 	pprof.StartCPUProfile(f)
 	defer pprof.StopCPUProfile()
 
-	fn_library = make(map[Sym]Fun)
-	addBasicMathLib()
+	lib := NewLib()
+	// fn_library = make(map[Sym]Fun)
+	lib.addBasicMathLib()
 	// addPeanoLib()
 	sp := newSampleParams()
 	sp.Wire_nearby = false
@@ -234,7 +240,7 @@ func benchmarkSampleProgram() {
 		sp.Program_length = 1 << i
 		fmt.Println("program length: ", sp.Program_length)
 		t0 = time.Now()
-		prog := sampleProgram(sp)
+		prog := lib.sampleProgram(sp)
 		fmt.Println("time Gen: ", time.Now().Sub(t0))
 		t0 = time.Now()
 		evalProgram(prog)

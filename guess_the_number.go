@@ -3,9 +3,11 @@ package main
 import "fmt"
 
 func gobTheBuilder(n int) {
+	lib := NewLib()
+	lib.addBasicMathLib()
 	sp := newSampleParams()
 	sp.Program_length = 1000
-	input := sampleProgram(sp)
+	input := lib.sampleProgram(sp)
 	// why []Statement and not Program is loadbearing?
 	test := func(p []Statement) bool {
 		vm, _ := evalProgram(p)
@@ -19,7 +21,7 @@ func gobTheBuilder(n int) {
 	}
 	count := 0
 	for !test(input) {
-		input = sampleProgram(sp)
+		input = lib.sampleProgram(sp)
 		count += 1
 		if count%1000 == 0 {
 			fmt.Println(count)
