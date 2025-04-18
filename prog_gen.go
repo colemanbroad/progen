@@ -51,6 +51,7 @@ const (
 	Info LogType = iota
 	Warn
 	Errr
+	Fmt
 )
 
 type Library struct {
@@ -158,6 +159,7 @@ type SampleParams struct {
 	Wire_nearby    bool
 	Program_length int
 	WireDecayLen   float64
+	Prefix         Program
 }
 
 func newSampleParams() SampleParams {
@@ -179,14 +181,18 @@ func (lib Library) sampleProgram(sp SampleParams) Program {
 	local_catalog := NewCatalog(sp.Program_length)
 	depthmap := make(map[Sym]int)
 
+	pl := 0
+
 	// The program prefix can be just another section in the hierarchy.
-	if program_prefix != nil {
-		prefix := CopyProgram(program_prefix)
+	if sp.Prefix != nil {
+		prefix := CopyProgram(sp.Prefix)
 		for line_no, stmt := range prefix {
 			depthmap[stmt.outsym] = getDepth(depthmap, stmt.argsyms...)
 			local_catalog.add(stmt.outsym, stmt.fn.rtype, uint16(line_no))
 			// gensym.add(stmt.outsym) // TODO: impl this so we can be sure to avoid Sym collisions!
-			program = append(program, stmt)
+			program[pl] = stmt
+			pl += 1
+			// program = append(program, stmt)
 		}
 	}
 
@@ -194,8 +200,6 @@ func (lib Library) sampleProgram(sp SampleParams) Program {
 	for sym, val := range lib.vals {
 		global_catalog.add(sym, val.vtype, 0) // FIXME! line is wrong
 	}
-
-	pl := 0
 
 stmtLoop:
 	for pl < sp.Program_length {
@@ -325,6 +329,8 @@ func printProgram[T Program | UncheckedProgram](program T, loggg LogType) {
 		InfoLog.Print(formatProgram(program))
 	} else if loggg == Errr {
 		panic(formatProgram(program))
+	} else if loggg == Fmt {
+		fmt.Println(formatProgram(program))
 	}
 }
 

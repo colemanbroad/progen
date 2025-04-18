@@ -633,3 +633,8 @@ What kind of grammar for metaprograms? Are all pieces independent? Is there a st
 Does each piece return a Program, or are there other types of pieces that *only* set context? E.g. imagine taking the product
 between Pieces that return state, pieces that control the set of available fragments, and pieces that control wiring.
 Are these all independent? 
+
+
+# Annoyances with work setup
+
+nixos: The default version of Delve is TOO OLD and doesn't work right with my Go version. Maybe I can just `go install` it?
