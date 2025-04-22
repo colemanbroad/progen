@@ -28,6 +28,9 @@ func main() {
 		os.Exit(0)
 	}
 
+	// iterate()
+	// os.Exit(0)
+
 	p := sample2lvl()
 	vm, _ := evalProgram(p)
 	printProgramAndValues(p, vm)

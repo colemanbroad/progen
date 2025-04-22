@@ -25,7 +25,7 @@ otherwise at the of the `2n` test cases we double `n *= 2` and repeat.
 The idea behind `ddmin` is so broad that it cries out for generalizations beyond strings
 of characters to data with more structure. The best summary of the history of test-case
 reduction and generalizations of delta debuggin can be found on John Regehr's blog posts
-[0],[c-reduce]. Regehr says this about the original Zeller paper,
+[Regh11],[c-reduce08]. Regehr says this about the original Zeller paper,
 
   > The enduring value of the paper is to popularize and assign a name
   to the idea of using a search algorithm to improve the quality of
@@ -37,7 +37,7 @@ find that
 
   > local minima can often by escaped by running the implementations one after the other.
 
-This work culminated in [c-reduce] which differs in interesting ways from other approaches
+This work culminated in [c-reduce08] which differs in interesting ways from other approaches
 to minimization. Perhaps most importantly, is it tries hard to escape local minima!
 
   > The C-Reduce core does not insist that transformations make the test case smaller, and
@@ -57,7 +57,7 @@ if it allows us to prune large branches of the resulting tree.
     semantics-preserving [...] we only want to preserve enough semantics that we can
     probabilistically avoid breaking whatever property makes a test case interesting
 
-However [c-reduce] still runs, fundamentally, on C/C++ source code, while *we are running
+However [c-reduce08] still runs, fundamentally, on C/C++ source code, while *we are running
 directly on program IR*.
 
 # Trees
@@ -65,9 +65,9 @@ directly on program IR*.
 How can `ddmin` best be applied to data with structure beyond that of a string of chars?
 
 There is has been continuous research on this topic since [ZH02] with perhaps the most
-successful variant being Hierarchical Delta Debugging [HDD], wihch is designed
+successful variant being Hierarchical Delta Debugging [HDD06], wihch is designed
 for tree-structured inputs and requires knowledge of a (context-free) grammar describing
-the input. [HDD] takes a coarse-to-fine ablation approach where first the top level
+the input. [HDD06] takes a coarse-to-fine ablation approach where first the top level
 nodes in the parse tree are removed before moving down the tree. It can be applied to
 program source by applying the parser and running HDD on the resulting AST. However this
 approach breaks down when the input format allows for defining *references* that allow for
@@ -75,7 +75,7 @@ one location to point to a different span of the input. Obviously, this is perva
 programming languages and in practice means that a naive application of HDD will lead to a
 large number of dangling references, potentially masking the true source of failure.
 
-Additional techniques discussed in [0] include iterative delta debugging[idd10] and
+Additional techniques discussed in [Regh11] include iterative delta debugging[idd10] and
 Lithium[lith09]. Lithium in particular does two things I really like. First, instead
 of referring to test cases as "failing" or "passing" they refer to them as being
 "interesting" or "uninteresting", which is a generalization that Antithesis has also
@@ -92,7 +92,7 @@ something like that. You can imagine asking the same question about sets of pixe
 
 # DAGs 
 
-In the comments around [0] a user proposes a more flexible version of [HDD] that works
+In the comments around [Regh11] a user proposes a more flexible version of [HDD06] that works
 with DAGs intead of trees. The idea is that you have a linear thing (a source file) and
 you have _guesses_ as to which chunks of the file are related in some way e.g. you make
 guesses as to potential grammars. If we _knew_ the grammar of the file (which delimiters
@@ -101,7 +101,7 @@ grammar doesn't allow defining references). But if we don't know the delimiters 
 still guess and maybe our guesses overlap each other. Thus we've got potentially
 overlapping spans of source and these naturally form a partial order `A subset B`.
 
-Spans arise naturally in [HDD] as a tree of spans are naturally formed by a Context
+Spans arise naturally in [HDD06] as a tree of spans are naturally formed by a Context
 Free grammar describing a given source file. They ALSO arise in the context of
 distributed systems from "event traces" 
 We've seen partial orders formed by spans before! They arise naturally when
@@ -220,9 +220,9 @@ correlated with | ??
 # Program Source
 
 Programs have tons of special structure that we can take advantage of, or ignore and risk
-wasting lots of effort. The current SotA for program minimization is a tool [Chisel][3], [3a]
+wasting lots of effort. The current SotA for program minimization is a tool [Chisel][chisel18]
 from UPenn. They also refer to this task as program "debloating". The current benchmark
-reducer is John Regehr's [c-reduce], which is designed for C/C++ code but apparently also
+reducer is John Regehr's [c-reduce08], which is designed for C/C++ code but apparently also
 works well on other (C-like?) languages which can take advantage of the initial reduction
 phases that don't rely on Clang's C/C++-specific analysis passes.
 
@@ -354,11 +354,11 @@ balance the "embedded decision tree" corresponding to that program.
   > The reports shown are reduced bug triggers after bug reduction with pydelta and
   C-Reduce.
 
-References [pydelta],[C-Reduce]. 
+References [pydelta],[c-reduce08]. 
 
 ## SQL queries
 
-[SQL98] is some of the first work using test-case reduction according to [c-reduce],
+[SQL98] is some of the first work using test-case reduction according to [c-reduce08],
 even if this wasn't it's primary purpose. This [fig](pics/Screenshot 2025-04-11 at
 7.16.35 PM.png) is a simple diagram of the coverage problem.
 
@@ -370,22 +370,21 @@ on query plan coverage and not on dist-sys correctness.
 [ZH02]: https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=988498
 Zeller and R. Hildebrandt. "Simplifying and isolating failure-inducing input."  
 
-[HDD]: https://users.cs.northwestern.edu/~robby/courses/395-495-2009-fall/hdd.pdf
+[HDD06]: https://users.cs.northwestern.edu/~robby/courses/395-495-2009-fall/hdd.pdf
 Ghassan Misherghi and Zhendong Su. "HDD: Hierarchical Delta Debugging"  
 
-[3]: https://github.com/aspire-project/chisel
+[chisel18]: https://chisel.cis.upenn.edu/
 Chisel: Effective Program Debloating via Reinforcement Learning
 
 [204]: https://www.semanticscholar.org/reader/ec682d9c7d68149dcd8932acd01a751f2f8b5611
 Testing Database Engines via Query Plan Guidance  
 
-[0]: https://blog.regehr.org/archives/527
-[3a]: https://pardisp.github.io/_papers/chisel-poster.pdf  
+[Regh11]: https://blog.regehr.org/archives/527
 [idd10]: https://people.kth.se/~artho/papers/artho-idd-10.pdf
 [lith09]: https://www.squarefree.com/lithium/algorithm.html
 [205]: https://scholar.google.com/scholar?as_ylo=2021&q=Massive+Stochastic+Testing+of+SQL&hl=en&as_sdt=0,9
 [pydelta]: missing!?
-[c-reduce]: https://blog.regehr.org/archives/1678
+[c-reduce08]: https://blog.regehr.org/archives/1678
 [SQL98]: https://www.semanticscholar.org/paper/Massive-Stochastic-Testing-of-SQL-Slutz/74b2c1bce3963fbb1300dc0995b9e275f3393cb9?p2df
 [hyp13]: https://hypothesis.readthedocs.io/en/latest/
 [WIP]: WorkInProgress
@@ -413,3 +412,20 @@ Examining Zero-Shot Vulnerability Repair with Large Language Models
 
 [flakey21]: https://dl.acm.org/doi/fullHtml/10.1145/3476105#Bib0057
 A survey of flakey tests
+
+[shrinkray]: https://news.ycombinator.com/item?id=42258733
+Hypothesis guy does fresh take on C-reduce in python
+
+[c-vise]: https://github.com/marxin/cvise
+Mentioned alongside [shrinkray]
+
+[vulcan23] tries to brand itself as a "generic" reducer as opposed to a "language specific" reducer like [c-reduce08]. 
+
+[vulcan23]: https://dl.acm.org/doi/abs/10.1145/3586049
+Pushing the Limit of 1-Minimality of Language-Agnostic Program Reduction
+
+
+Looks to fully connect the dots between program reduction and causal identification.
+
+[groce15]: https://onlinelibrary.wiley.com/doi/10.1002/stvr.1574
+Cause reduction: delta debugging, even without bugs
