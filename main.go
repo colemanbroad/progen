@@ -10,7 +10,7 @@ var dbname *string
 
 func main() {
 	dbname = flag.String("d", "", "database to connect")
-	gob := flag.Int("gob", -1, "Can we build it? Yes we can!")
+	gob := flag.Int("n", -1, "Can we build it? Yes we can!")
 	lib := NewLib()
 	flag.Parse()
 	if flag.NFlag() == 0 {

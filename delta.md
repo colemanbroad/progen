@@ -5,6 +5,7 @@ Synonyms in the literature:
 - shrinking
 - minimization
 - debloating
+- 1-minimal program finding
 
 # Sequences
 
@@ -176,10 +177,9 @@ The DAG is formed only by the `subset` relation.
 The addition of the `intersects` relation complicates the situation, because it
 is a symmetric relation.
 
-## Deep in the weeds on Relations
+## Deep in the weeds on Relations and Graphs
 
 Common Properties of Relations:
-
 
 Property      | Definition
 --------      | ----------
