@@ -6,7 +6,7 @@ import (
 )
 
 func TestExperPeano(t *testing.T) {
-	*dbname = "testdb.peano.db"
+	*dbname = testdir + "testdb.peano.db"
 	runPeano()
 	db := ConnectSqlite(*dbname)
 	script, err := os.ReadFile("wire.sql")
@@ -20,7 +20,7 @@ func TestExperPeano(t *testing.T) {
 }
 
 func TestExperPow2(t *testing.T) {
-	*dbname = "testdb.pow2.db"
+	*dbname = testdir + "testdb.pow2.db"
 	runPow2()
 	db := ConnectSqlite(*dbname)
 	script, err := os.ReadFile("p2.sql")

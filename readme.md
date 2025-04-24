@@ -1,7 +1,6 @@
 This little language ended up pretty simple.
 Not by design but by dumb iteration and trying to do first, dumbest thing that came to mind.
 
-
 Instead of have FnCall have a name symbol that points to an interned true function we actually
 copy the function pointer into every op of the program. The `value` has type `any` and stores
 the func ptr. The name is a unique within the Library `map[name]->FnCall`.
