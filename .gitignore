@@ -6,3 +6,6 @@ proggen
 py/uv.lock
 tiger.csv
 .DS_Store
+test/*.out
+test/*.err
+test/*.log
