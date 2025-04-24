@@ -8,8 +8,11 @@ import (
 
 var dbname *string
 
-func main() {
+func init() {
 	dbname = flag.String("d", "", "database to connect")
+}
+
+func main() {
 	gob := flag.Int("n", -1, "Can we build it? Yes we can!")
 	lib := NewLib()
 	flag.Parse()

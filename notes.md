@@ -616,9 +616,5 @@ one sense, it may maintain a single dist-sys state e.g. (leader, follower, voter
 
 [delta.md]
 
-# Annoyances with work setup
-
-nixos: The default version of Delve is TOO OLD and doesn't work right with my Go version. Maybe I can just `go install` it?
-
-
-
+Annoyances with work setup
+nixos: The default version of Delve is TOO OLD and doesn't work right with my Go version. Maybe I can just `go install` it? I did!

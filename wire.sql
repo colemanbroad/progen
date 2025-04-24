@@ -1,4 +1,4 @@
-.mode col
+-- .mode col
 
 -- First, list all the tables.
 select name FROM sqlite_master WHERE type='table';
@@ -30,7 +30,7 @@ group by wr_decay, prog_l
 
 -- Uneven counts?
 select wr_decay, prog_l, sum(count) from wiring
-group by campaign_id
+-- group by campaign_id
 ;
 
 -- Uneven total nodes in wire groups! Need to rerun analyses.
@@ -62,18 +62,22 @@ order by cheating
 limit 5000
 ;
 
+drop table if exists calaban ;
+
 create table calaban as
 select *, 'zero' as wr_decay from wiring where wr_nearby = 0 
 union all
 select *, wr_decay as wr_decay from wiring where wr_nearby = 1 
 ;
 
+select * from calaban 
+limit 10
+;
 select * from calaban limit 10 ;
 
-drop table calaban;
-alter table calaban rename to calaban ;
-alter table calaban drop column wr_decay;
-alter table calaban rename column "wr_decay:1" to wr_decay;
+-- alter table calaban rename to calaban ;
+-- alter table calaban drop column wr_decay;
+-- alter table calaban rename column "wr_decay:1" to wr_decay;
 
 -- select 1;
 
@@ -94,9 +98,7 @@ limit 50
 select count() from  wiring;
 
 
-
-
-drop view counthist ;
+drop view if exists counthist ;
 
 create view counthist as
 select depth, count as count, prog_l, wr_decay
@@ -108,7 +110,3 @@ order by wr_decay, depth
 ;
 
 select * from counthist;
-
-
-
-

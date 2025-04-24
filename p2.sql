@@ -1,9 +1,11 @@
 -- .header on
-.mode col
+-- .mode col
 
 -- First, list all the tables.
 select name, type FROM sqlite_master
 ;
+
+-- .exit
 
     -- Quick snapshot of the main table and columns.
 select *, count() from wire_pow_of_two
@@ -15,7 +17,7 @@ create view if not exists Camp as
 select distinct decay, proglen, campaign_id from wire_pow_of_two ;
 
 -- Make a table of all the unique powers of two for each campaign.
-create view UniquePo2 as
+create view if not exists UniquePo2 as
 with
 A as ( select distinct campaign_id, log(2, value) lg2val  from wire_pow_of_two ),
 B as ( select *, floor(lg2val)=lg2val isPo2 from A ),
@@ -54,7 +56,7 @@ where reward > 0
 -- Plot cumulative log-reward over time. There is a clear advantage
 -- to the wiring schemes that prefer the recent program lines!
 -- x=time y=sum_reward c=_decay
--- create view temp as 
+create view if not exists temp as 
 with
 A as (
     select *, log(2, reward) as logrew, cast(decay as text) _decay
@@ -95,7 +97,7 @@ B as (
 
 
 -- select only rows from campaigns with more than 1k rows
-create view myview as
+create view if not exists myview as
 with A as (
     select campaign_id, count() cnt 
     from wire_pow_of_two 

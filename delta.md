@@ -108,7 +108,7 @@ distributed systems from "event traces"
 We've seen partial orders formed by spans before! They arise naturally when
 thinking about concurrent process and spans of time. We want to know "does span A
 happen before or after span B?" but we only have a definitive answer if the spans
-don't overlap. 
+don't overlap. [fig-spans]
                                       
                                          ┌────────────────( B )───────────────┐  
                                          │                                    │  
@@ -118,7 +118,7 @@ don't overlap.
                          │   │                  │      │                │   │    
                          │   │                  │      │                │   │    
                          └─C─┘                  └*  E *┘                └─D─┘    
-                                                                                 
+
 This produces the following DAG (we only consider an irreflexive version of each relation)
 according to the `subset-of` relation:
 
@@ -217,7 +217,7 @@ likes           |
 correlated with | ??
 
 
-# Program Source
+# Programs
 
 Programs have tons of special structure that we can take advantage of, or ignore and risk
 wasting lots of effort. The current SotA for program minimization is a tool [Chisel][chisel18]
@@ -234,11 +234,11 @@ result is a program with every Statement removed that generates a Sym which isn'
 a transitive dependency of the target Value.
 
 
-# Python function arguments (Property based testing)
+# Reducing with Hypothesis
 
-The best example is [Hypothesis][hyp13], which is probably what used to be called [pydelta]? How
-does Hypothesis do reduction? They have a few extra fancy tricks up their sleeves like in [invariant
-parameters] produced during the `explain` phase? 
+When [Hypothesis][hyp13] finds a problem it can reduce Python function arguments to minimal values.
+Q: Can it also reduce sequences of function calls during stateful testing? 
+They have a few extra fancy tricks up their sleeves like in [invariant parameters] produced during the `explain` phase.
 
 [invariant parameters]: https://hypothesis.readthedocs.io/en/latest/reference/api.html#controlling-what-runs
 
@@ -252,8 +252,12 @@ parameters] produced during the `explain` phase?
         y=0,
     )
 
-, and allowing failing cases to be stored in a database of your choosing. This is
-an interesting choice and I don't really get it...
+, and allowing failing cases to be stored in a database of your choosing. 
+
+This take doesn't make sense to me. Controlling the distribution of inputs is exactly 
+what user-defined generators allows. Analytical specifications of distributions (i.e. an
+object `D` that allows `D.prob_of(value) -> [0,1]`) are not possible with any types outside
+of ints and floats, or via invertible models.
 
   > Hypothesis takes a philosophical stance that property-based testing libraries, not
     the user, should be responsible for selecting the distribution. As an intentional
@@ -392,7 +396,13 @@ Testing Database Engines via Query Plan Guidance
 [gts21]: https://github.com/regehr/guided-tree-search
 [c-smith]: https://github.com/csmith-project/csmith
 
-# Wip
+# Figures
+
+[fig-spans]: figure
+Spans 
+
+
+# Unreferenced
 
 [PDD21]: https://xiongyingfei.github.io/papers/FSE21a.pdf
 
@@ -429,3 +439,4 @@ Looks to fully connect the dots between program reduction and causal identificat
 
 [groce15]: https://onlinelibrary.wiley.com/doi/10.1002/stvr.1574
 Cause reduction: delta debugging, even without bugs
+

@@ -61,9 +61,11 @@ fn_lib, val_lib     ; Catalog, RootCatalog
 ???                 ; PieceBuilder
 No state yet        ; Target trait. Target/env has state. Tree fuzzing makes sense.
 ???                 ; Dispatcher, Logger
-
 In process          ; Interpreter + Shared Heap
+I control schema    ; I have to learn Events table and BigQuery JS (for FDB & Kafka)
 
+Go. one process for config, program gen, targets, and analysis.
+vs running Drome and Curricle?
 
 No type enforcement between the function defined in a Fun and the stated arg/p types.
 TL DOES have this! It's probably necessary to provide to customers.

@@ -141,6 +141,7 @@ func runPow2() {
 				global_time += 1
 			}
 			stats.print()
+			savePow2(sp)
 		}
 	}
 }

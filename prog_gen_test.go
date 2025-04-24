@@ -3,33 +3,42 @@ package main
 import (
 	"math"
 	"math/rand"
-	"os"
 	"reflect"
 	"testing"
 )
 
-func TestMain(m *testing.M) {
-	// Open the log file
-	file, err := os.OpenFile(logdir+"test.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		ErrorLog.Fatalf("Failed to open log file: %v", err)
-	}
-	defer file.Close()
+const (
+	testdir = "test/"
+)
 
-	// Set log output to the file
-	InfoLog.SetOutput(file)
-	ErrorLog.SetOutput(file)
+// func TestMain(m *testing.M) {
+// 	// Open the log file
+// 	file, err := os.OpenFile(testdir+"test.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+// 	if err != nil {
+// 		log.Fatalf("Failed to open log file: %v", err)
+// 	}
+// 	file2, err := os.OpenFile(testdir+"test.out", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+// 	if err != nil {
+// 		log.Fatalf("Failed to open stdout file: %v", err)
+// 	}
+// 	file3, err := os.OpenFile(testdir+"test.err", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+// 	if err != nil {
+// 		log.Fatalf("Failed to open stderr file: %v", err)
+// 	}
 
-	initPeanoLibrary()
-	lib := NewLib()
-	lib.addBasicMathLib()
+// 	InfoLog.SetOutput(file)
+// 	ErrorLog.SetOutput(file)
+// 	stdout := os.Stdout
+// 	stderr := os.Stderr
+// 	os.Stdout = file2
+// 	os.Stderr = file3
+// 	code := m.Run()
+// 	os.Stdout = stdout
+// 	os.Stderr = stderr
 
-	// Run tests
-	code := m.Run()
-
-	// Exit with the test code
-	os.Exit(code)
-}
+// 	// Exit with the test code
+// 	os.Exit(code)
+// }
 
 func Test_ShortestPath(t *testing.T) {
 	for fn_name := range fn_library {
