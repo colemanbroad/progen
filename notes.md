@@ -612,9 +612,28 @@ one sense, it may maintain a single dist-sys state e.g. (leader, follower, voter
 
 --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- 
 
-# See delta.md for program minimization
-
-[delta.md]
-
 Annoyances with work setup
 nixos: The default version of Delve is TOO OLD and doesn't work right with my Go version. Maybe I can just `go install` it? I 
+
+# See delta.md for program minimization
+
+[./delta.md]
+
+# See concentration.md for thoughts on concentration of measure
+
+[./concentration.md]
+
+# See distributed.md for thoughts on distributed systems testing
+
+[./distributed.md]
+
+The goal of program generation is to exercise diverse behaviours of the system under test (SUT), including especially bugs.
+The determinator gives us the ability to reset the state of the SUT to either a) a root state that is always known or b) any
+other state we've found during our explorations. Once the SUT is in a particular state we can take actions (feed it inputs)
+that drive the system in different directions. The question is *what actions should we take* to find the most diverse set
+of behaviours?
+
+This is difficult for two reasons:
+1. because we have to treat most of the SUT like a black box, with logging as our limited window into it's internal states.
+2. because the phase space of the SUT is most often a complex web and highly chaotic, so it's hard to know what trajectories
+through the space (of which we have limited visibility) will be taken given any (state, action) pair.

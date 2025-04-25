@@ -29,7 +29,7 @@ type RewardTime struct {
 
 func init_reward() {
 	reward_buckets = make(map[int]float64)
-	reward = make([]RewardTime, 0)
+	reward = make([]RewardTime, 1000)
 	Reward_total = 0
 	global_time = 0
 }
@@ -50,7 +50,6 @@ func isPowerOfTwo(n int) bool {
 		c = 0.0
 	}
 	reward_buckets[n] = c + 1.0
-
 	d := math.Log2(float64(n))
 	r := 0.0
 	is_power := false
@@ -62,7 +61,6 @@ func isPowerOfTwo(n int) bool {
 	}
 	history_power_of_two = append(history_power_of_two, Reward_power_of_two{Value: float32(n), Reward: float32(r), Time: global_time})
 	// fmt.Println("pow2 ", n, d, is_power)
-
 	return is_power
 }
 
