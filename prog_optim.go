@@ -352,7 +352,7 @@ func (lib Library) RunGenetic(p GPParams) {
 }
 
 // copies oprog
-func reshuffle(oprog Program) Program {
+func shuffle(oprog Program) Program {
 	count := 0
 	if !isValid(oprog) {
 		panic("we fucked up")
@@ -384,7 +384,7 @@ func (lib Library) mutate(p Program, best_programs []Program) Program {
 		return lib.sampleProgram(newSampleParams())
 	case r < 0.2:
 		// fmt.Println("reshuffle")
-		return reshuffle(p)
+		return shuffle(p)
 	case r < 0.3:
 		// fmt.Println("point_mutate")
 		pnew, _ := pointMutate(p)
