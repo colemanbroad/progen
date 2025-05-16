@@ -9,7 +9,7 @@ import (
 func TestReshuffle(t *testing.T) {
 	lib := initPeanoLibrary()
 	prog := lib.sampleProgram(newSampleParams())
-	prog_mutated := reshuffle(prog)
+	prog_mutated := shuffle(prog)
 	// prog_mutated := point_mutate(prog)
 	// assert that sometimes prog != prog_mutated?
 	tassert(len(prog) == len(prog_mutated), func() { t.Error("Mutated Programs not same length.") })
@@ -52,7 +52,7 @@ func TestReshuffleLong(t *testing.T) {
 	lib := initPeanoLibrary()
 	for range 1000 {
 		p := lib.sampleProgram(newSampleParams())
-		p = reshuffle(p)
+		p = shuffle(p)
 		validateOrFail(p, "reshuffled")
 	}
 }
@@ -91,7 +91,7 @@ func TestBasicgenComboLong(t *testing.T) {
 		x := rand.Float32()
 		switch {
 		case x < 0.3:
-			p = reshuffle(p)
+			p = shuffle(p)
 			panicIfInvalid(p)
 		case x < 0.6:
 			p, _ = pointMutate(p)

@@ -1,0 +1,30 @@
+
+
+= ABC
+
+There once was a man from nantucket.
+And he said...
+
+=== Three wishes you shall have
+
+And three `x = 3 + 5` he had.
+
+What's the deal with "these quotes"?
+
++ a man
++ a plan
++ a canal
+
+$ x + 3f -> 97 or (a, b) $
+
+Let's insert an image:
+
+#figure(
+  image("pics/Screenshot 2025-04-11 at 7.16.35 PM.png", width: 70%),
+  caption: [A curious figure indeed.],
+) <sql-statements>
+
+OK, and then later in the text I can write some more.
+
+And eventually I will reference @sql-statements again.
+

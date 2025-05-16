@@ -96,7 +96,6 @@ func evalStatement(stmt Statement, locals ValueMap) {
 	r = g.Call(args)[0].Interface()
 
 	// Here's where we can introduce the logic of "any" types? generic types?
-	//
 	rtype := Type(reflect.TypeOf(r).Name())
 
 	// Check that the types are correct
