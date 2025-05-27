@@ -4,9 +4,9 @@ import (
 	"fmt"
 )
 
-// We want to count the number of ways of making any type available in the catalog. This
-// is a step along the way to counting the number of ways to make a program length n.
-// Which is a step along the way to iterating over programs in a nice even way.
+// We want to count the number of ways of making any type available in the catalog.
+// This is a step along the way to counting the number of ways to make a program length n,
+// which is a step along the way to iterating over programs in a nice even way.
 
 // First, we iterate over all the fragments and add one to the type and track the size of
 // the dag required to build it.
@@ -82,14 +82,11 @@ func main() {
 
 }
 
-// Now we know where types come from and go to, and we know the same for funcs.
-// This is the factor graph, just split into it's two components.
-// We can use this to build an index of types and their trasitive requirements.
-// We can count ways of building types.
+// We can use the TF-Graph to build an index of types and their trasitive requirements.
 //
-// We can assign a level to every F and T, which begins at for F thaone n.
-// and zero for T produced by those F. Then it increments to one for F that require only
-// T in lvl=0 and then T produced by those F *and not already a lower level*.
+// We can assign a level to every F and T, which begins at zero for F : () -> T foreach T,
+// and zero foreach T produced by each F. Then it increments to one for F : T -> T2 that require only
+// T : lvl=0 and then T produced by those F *and not already a lower level*.
 func determineLevel(catalog Cata, cat2 CataGraph2) {
 	lvlF := map[string]int{}
 	lvlT := map[MyType]int{}
