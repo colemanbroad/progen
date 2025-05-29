@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
+	"hash/crc32"
 )
 
 // We want to count the number of ways of making any type available in the catalog.
@@ -43,13 +46,13 @@ var (
 type Cata map[string]FnT
 
 // A smarter way might be to just map between names.
-type CataGraph2 struct {
+type TypeCatalog struct {
 	in  map[MyType][]string // funcs producing T
 	out map[MyType][]string // funcs requiring T
 }
 
-func buildTypeCatalog(catalog Cata) CataGraph2 {
-	cg := CataGraph2{
+func buildTypeCatalog(catalog Cata) TypeCatalog {
+	cg := TypeCatalog{
 		in:  map[MyType][]string{},
 		out: map[MyType][]string{},
 	}
@@ -79,7 +82,8 @@ func main() {
 	fmt.Printf("cg := %+v \n", cata2)
 
 	determineLevel(catalog, cata2)
-
+	tc := typecat(catalog, cata2)
+	fmt.Printf("%+v \n", tc)
 }
 
 // We can use the TF-Graph to build an index of types and their trasitive requirements.
@@ -87,7 +91,7 @@ func main() {
 // We can assign a level to every F and T, which begins at zero for F : () -> T foreach T,
 // and zero foreach T produced by each F. Then it increments to one for F : T -> T2 that require only
 // T : lvl=0 and then T produced by those F *and not already a lower level*.
-func determineLevel(catalog Cata, cat2 CataGraph2) {
+func determineLevel(catalog Cata, cat2 TypeCatalog) {
 	lvlF := map[string]int{}
 	lvlT := map[MyType]int{}
 
@@ -131,6 +135,63 @@ func determineLevel(catalog Cata, cat2 CataGraph2) {
 	fmt.Printf("%+v \n", lvlF)
 	fmt.Printf("%+v \n", lvlT)
 }
+
+func (m *FnT) ToBytes2() ([]byte, error) {
+	buf := &bytes.Buffer{}
+	if err := binary.Write(buf, binary.LittleEndian, m.rtype); err != nil {
+		return nil, err
+	}
+	length := uint32(len(m.atypes))
+	if err := binary.Write(buf, binary.LittleEndian, length); err != nil {
+		return nil, err
+	}
+	for _, val := range m.atypes {
+		if err := binary.Write(buf, binary.LittleEndian, val); err != nil {
+			return nil, err
+		}
+	}
+	return buf.Bytes(), nil
+}
+
+func (m *FnT) ToBytes() []byte {
+	if m == nil {
+		panic("nope")
+	}
+	buf := &bytes.Buffer{}
+	binary.Write(buf, binary.LittleEndian, m.rtype)
+	binary.Write(buf, binary.LittleEndian, uint32(len(m.atypes)))
+	for _, val := range m.atypes {
+		binary.Write(buf, binary.LittleEndian, val)
+	}
+	return buf.Bytes()
+}
+
+func (m *FnT) hashOf() uint32 {
+	by := m.ToBytes()
+	return crc32.ChecksumIEEE(by)
+}
+
+// Build index from Type to Fragments.
+func typecat(catalog Cata, cat2 TypeCatalog) map[uint32][]string {
+	typecat := map[uint32][]string{}
+	for name, fn := range catalog {
+		l, ok := typecat[fn.hashOf()]
+		if !ok {
+			l = make([]string, 0, 10)
+		}
+		l = append(l, name)
+		typecat[fn.hashOf()] = l
+	}
+	return typecat
+}
+
+// Now that we have the index from Type -> Fragments we can start with building
+// the more complex structure: the dataflow. How are we going to build it?
+// Well we start by sampling a _type_ from the keys to typecat. Then we check all
+// the valid syms of the correct types as args, and each time we check the FULL
+// program DAG's hash value to see if it already exists (has already been created, even during
+// an intermediate stage earlier in program gen). If so, then we skip it and move on. Even
+// if the final structure had a totally different hash function.
 
 // OK, now we can determine the level for any F or T, as well if the Catalog is buildable.
 // But we want to *count* the ways that an F or T could be built!  An F can be run in a

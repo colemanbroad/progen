@@ -106,10 +106,20 @@ One factorization of programs is
 
 Another is
 
-1
+#horizontalrule
+
+How can we count DAGs? Look at R. Stanley's _Enumerative Combinatorics_ for the answer.
+
+
+= E-Graph
+
+The E-graph is uniquely defined by the Catalog,
+and has a node for every element of the Catalog and a box drawn around nodes with the same return type
+and a numbered, directed edge out from each node pointing to a box of appropriate type corresponding to the arguments to that function.
 
 = TF-Graphs
 
+The TF-Graph is also uniquely defined by the Catalog.
 The initial catalog is a `map[name]Fragment`,
 where each fragment is a type with a single arrow
 #footnote[Let's ignore higher-kinded types (HKTs) for now.]
@@ -139,4 +149,9 @@ for _, frag := range catalog {
 
 This graph is bipartite in $F$ and $T$, i.e. fragment nodes only point to type nodes,
 and type nodes only point to fragments.
+
+= Dataflow
+
+Let's try to make dataflows and see how easy it is.
+We're going to just make an index type $->$ catalog.
 
