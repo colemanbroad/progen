@@ -1,75 +1,292 @@
 
 #let horizontalrule = line(start: (25%, 0%), end: (75%, 0%))
+#show figure.caption: it => text(it, fill: gray, size: 9pt)
+#set heading(numbering: "1.")
+#import "@preview/fletcher:0.5.8" as fletcher: diagram, edge, node
 
 = Program generation methods
 
 - Forward
 - Forward + tail weight
-- DAG sampling
+- Dataflow-first
 - Backward
-- Tree-based (Controling margins)
+- Margin-guided (aka "tree-based")
 - Two-level
 
 _Each approach leads to a different distribution of programs._
 
-#set heading(numbering: "1")
-
-= Forward sampling <forward>
+== Forward sampling <forward>
 
 Program generation is currently performed one line at a time ("forward") by sampling
 
 + a random fragment from the catalog
 + a random tuple of existing, appropriately typed syms as arguments.
 
-= Forward + tail weight
+== Forward + tail weight
 
 Fragments are sampled evenly from the catalog,
 but wiring has a preference for syms defined more recently.
 
-= DAG sampling
+= Common data structures in program generation
 
-A TacticsLang program's dataflow can be represented as a DAG
-where each node corresponds to a statement defining a new sym.
-This representation is clean in TacticsLang as the language doesn't allow defining multiple syms per statement.
+Simplifications of `Program` and `Catalog` arranged from rich to poor.
 
-#import "@preview/fletcher:0.5.8" as fletcher: diagram, edge, node
-#let nodes = (
-  `v1 = f()`,
-  `v2 = g()`,
-  `v3 = h(v1, v2)`,
-  `v4 = i(v3, v2)`,
-)
-#let mydia = diagram(node-stroke: 0.1em, node-corner-radius: 0.3em, {
-  let a = (1 / 2, 0)
-  let b = (0, 1 / 2)
-  let c = (1, 1)
-  let d = (1 / 2, 1.8)
-  node(a, nodes.at(0))
-  node(b, nodes.at(1))
-  node(c, nodes.at(2))
-  node(d, nodes.at(3))
-  edge(a, c, "-|>")
+== Program
+
+A program introduces: `Sym`, `Statement`, and `Function`.
+
+// == DAG
+
+// A TacticsLang program can be represented as a DAG
+// where each node corresponds to a statement defining a new sym.
+// This representation is clean in TacticsLang as the language doesn't allow defining multiple syms per statement.
+
+// #let nodes = (
+//   `v1 = f()`,
+//   `v2 = g()`,
+//   `v3 = h(...)`,
+//   `v4 = i(...)`,
+// )
+// #let mydia = diagram(node-stroke: 0.1em, node-corner-radius: 0.3em, {
+//   let a = (1 / 2, 0)
+//   let b = (0, 1 / 2)
+//   let c = (1, 1)
+//   let d = (1 / 2, 1.8)
+//   node(a, nodes.at(0))
+//   node(b, nodes.at(1))
+//   node(c, nodes.at(2))
+//   node(d, nodes.at(3))
+//   edge(a, c, "-|>")
+//   edge(b, c, "-|>")
+//   edge(c, d, "-|>")
+//   edge(b, d, "-|>")
+// })
+
+// #let fig = align(center + horizon)[
+//   #stack(
+//     dir: ltr,
+//     ```python
+//     v1 = f()
+//     v2 = g()
+//     v3 = h({v1, v2})
+//     v4 = i({v2, v3})
+//     ```,
+//     text(mydia, 7pt),
+//     spacing: 3em,
+//   )]
+// #let cap = [
+//   The program on the left corresponds to the DAG on the right _evaluated in the order_: `v1 v2 v3 v4`,
+//   but the order `v2 v1 v3 v4` would also be valid. The specific tuple of arguments for a node is also hidden in this view,
+//   all we can say is that the function depends somehow on the set of inputs flowing into the node.
+// ]
+// #figure(fig, caption: cap) <dataflow-0>
+
+== E-Graph
+
+The E-graph is uniquely defined by the Catalog,
+and has a node for every element of the Catalog and a box drawn around nodes with the same return type
+and a numbered, directed edge out from each node pointing to a box of appropriate type corresponding to the arguments to that function.
+
+== TF-Graphs
+
+The TF-Graph is also uniquely defined by the Catalog.
+The initial catalog is a `map<Name, Function>`,
+where each fragment is a type with a single arrow
+#footnote[Let's ignore higher-kinded and types (HKTs) and generics for now.]
+mapping a tuple of input types to a single output type.
+
+The TF-Graph for the catalog `{0, 1, +, True, False, =}` looks like this:
+
+#let dia = diagram(node-stroke: 0.1em, node-shape: circle, {
+  let a = node((0, 4 * 0.0), "0")
+  let b = node((0, 4 * 0.2), "1")
+  let c = node((0, 4 * 0.4), "+")
+  let c2 = node((0, 4 * 0.6), $=$)
+
+  let d = node((0, 4 * 0.8), "True")
+  let e = node((0, 4 * 1.0), "False")
+  // let f = node((0, 4 * 1.2), $=_b$)
+
+  let g = node((1, 0.2), "Num")
+  let h = node((1, 2.8), "Bool")
+
+  a
+  b
+  c
+  c2
+
+  d
+  e
+  // f
+
+  g
+  h
+  edge(a.value.pos.raw, g.value.pos.raw, "-|>")
+  edge(b.value.pos.raw, g.value.pos.raw, "-|>")
+  edge(c.value.pos.raw, g.value.pos.raw, "-|>")
+  edge(c2.value.pos.raw, h.value.pos.raw, "-|>")
+
+  edge(g.value.pos.raw, c.value.pos.raw, "-|>", bend: 40deg)
+  edge(g.value.pos.raw, c2.value.pos.raw, "-|>", bend: 40deg)
+
+  edge(d.value.pos.raw, h.value.pos.raw, "-|>")
+  edge(e.value.pos.raw, h.value.pos.raw, "-|>")
+  // edge(f.value.pos.raw, h.value.pos.raw, "-|>")
+  // edge(h.value.pos.raw, f.value.pos.raw, "-|>", bend: 40deg)
+})
+#align(center, dia)
+
+This graph is bipartite in $F$ and $T$, i.e. fragment nodes only point to type nodes,
+and type nodes only point to fragments.
+The TF-Graph is useful becuase it makes *reachability analysis* easy.
+From the types' perspective, the arrows show which fragments provide and require them.
+
+If there doesn't exist a path following the in-edges backwards to a source node,
+then that type or fragment isn't constructable within the given catalog.
+
+TF-Graph is defined as follows:
+
++ Add a node for every fragment in the catalog
++ Add a node for every distinct type referenced across all fragments
++ For each fragment $F$, for each type $T$ in the set of it's arguments' types: add an edge $T -> F$.
++ For each fragment $F$ add an edge pointing to it's return type $T$: $F -> T$.
+
+// And here it is in pseudocode:
+
+// ```go
+// catalog := Catalog()
+// g := EmptyTFGraph()
+// for _, frag := range catalog {
+//   g.add_node(frag)
+//   for _, typ := range frag.argtypes {
+//     g.add_node(typ)
+//     g.add_directed_edge(typ, frag)
+//   }
+//   g.add_node(frag.rtype)
+//   g.add_directed_edge(frag, frag.rtype)
+// }
+// ```
+
+
+== Dataflow
+
+A dataflow is a program where a function can be executed any time all it's inputs are ready.
+If multiple functions are ready then the order of execution is ambiguous and the scheduler makes a decision.
+Sometimes the order of exection is unambiguous (see @dataflow-1 left), but not usually.
+
+The diagram below shows two dataflows. The one on the left corresponds to just a single order of execution,
+while the flow on the right can be executed in $3! = 6$ different ways. This introduces a bias
+in the dataflow distribution when we sample evenly across programs.
+
+#let d1 = diagram(node-stroke: 0.1em, node-shape: circle, {
+  let a = (1, 2 * 0 / 3)
+  let b = (1, 2 * 1 / 3)
+  let c = (1, 2 * 2 / 3)
+  let d = (1, 2 * 3 / 3)
+  node(a, "a")
+  node(b, "b")
+  node(c, "c")
+  node(d, "d")
+  edge(a, b, "-|>")
   edge(b, c, "-|>")
   edge(c, d, "-|>")
-  edge(b, d, "-|>")
 })
+#let d2 = diagram(node-stroke: 0.1em, node-shape: circle, {
+  let a = (1, 0)
+  let b = (0, 1)
+  let c = (1, 1)
+  let d = (2, 1)
+  node(a, "a")
+  node(b, "b")
+  node(c, "c")
+  node(d, "d")
+  edge(a, b, "-|>")
+  edge(a, c, "-|>")
+  edge(a, d, "-|>")
+})
+#figure(
+  align(center)[ #stack(dir: ltr, d1, d2, spacing: 3em) ],
+  caption: [
+    There is only one way to linearize the dataflow on the left: the program `d(c(b(a())))`, but there are $3! = 6$ ways to linearize
+    that on the right: `a(); b(); c(); d();` as well as `a(); d(); c(); b()`, etc...
+  ],
+)<dataflow-1>
 
-#align(center + horizon)[
-  #stack(
-    dir: ltr,
-    ```python
-    v1 = f()
-    v2 = g()
-    v3 = h(v1, v2)
-    v4 = i(v3, v2)
-    ```,
-    text(mydia, 7pt),
-    spacing: 3em,
-  )]
-#text(fill: gray, size: 8pt)[
-  The program on the left corresponds to the DAG on the right _evaluated in the order_: `v1 v2 v3 v4`,
-  but the order `v2 v1 v3 v4` would also be valid.
-]
+// #text(fill: gray, size: 8pt)[
+//   There is only one way to linearize the dataflow on the left: the program `d(c(b(a())))`, but there are $3! = 6$ ways to linearize
+//   that on the right: `a(); b(); c(); d();` as well as `a(); d(); c(); b()`, etc...
+// ]
+
+// When naively sampling programs in a manner that seems unbiased it is easy to end up with a highly biased distribution of dataflows.
+// For example: there are 4! programs dataflow-equivalent to `A(); B(); C(); D();`, but only one equivalent to `F(G(H(I())))`.
+// Another way of stating this is "the type signatures of fragSo the type signatures of our functions affect the nu
+
+order of execution of statements is only implicitly defined via the connections between symbols and may not be unique.
+We go from `Program = List<Statement>` to `Dataflow = Set<Statement>`.
+When our catalog consists only of pure functions then the dataflow determines everything about the program.
+
+_But do we sample evenly from the space of programs? Doesn't the catalog affect this?_
+
+Our fragment-first sampling technique (@forward)
+
+=== Counting Dataflows
+
+In order to remove the bias in the dataflow distribuion we either need to
+
+- sample evenly across programs, but then compensate for the bias by rejecting some flows probabilistically
+- sample dataflows directly.
+
+#horizontalrule
+
+Every statement has immediate and transitive dependencies.
+If two statements perform the same operation and have the exact same transitive dependencies then they are *syntactically equivalent*.
+This can be useful if we want to repeat the same calculation at different times,
+or if the system has hidden state#footnote[it reads or writes some global mutable unreferenced by the program] that affects the results.
+
+Let's begin by enumerating *minimal dataflows*, i.e. flows where no two nodes are equivalent.
+If we restrict the set of dataflows in this way then the space naturally factorizes in to layers,
+where dependencies only flow in one direction.
+
+#smallcaps[An example.]
+Let the catalog contain three items `{0, 1, +}`.
+Now let's build up layers containing all valid syntactic expressions,
+where expressions in $l_i$ contain at least one reference to a term in $l_(i-1)$
+
+// We put {`0, 1`} on layer $l_0$ for total size $c_0 = 2$.
+
+`l0 = 0, 1` \
+`l1 = 0+0, 0+1, 1+0, 1+1` \
+`      a    b    c    d              ` definitions \
+`l2 = a+a, a+b, b+a, b+b, a+c, + ... `
+all combinations of two $l_1$ arguments plus \
+`     a+0, 0+a, a+1, + ...           `
+all combinations of one $l_1$ and one $l_i$ where $i<1$.
+
+_How many terms are there at each level?_
+
+Let's define $c_i = |l_i|$.
+There are two terms in $l_0$ so $c_1 = 2 times 2 = 4$,
+and then $c_2 = c_1^2 + 2c_1c_0 = 32$.
+
+The full induction is
+
+#set math.equation(numbering: "[1]")
+
+$
+  c_(i+1) = underbrace(#h(1em) c_i^2 #h(1em), "two from" l_i) + underbrace(2c_i C_(i-1), "one from" l_i \ "and one from" l_(j<i))
+$ <eq-1>
+
+where $C_i = sum_(j=0)^i c_j$.
+
+_How many minimal dataflows have_ `n` _nodes?_
+
+
+
+
+// See @eq-1.
+
+
+=== Sampling Dataflows
 
 The goal of DAG sampling is split program generation into two phases:
 
@@ -111,47 +328,6 @@ Another is
 How can we count DAGs? Look at R. Stanley's _Enumerative Combinatorics_ for the answer.
 
 
-= E-Graph
-
-The E-graph is uniquely defined by the Catalog,
-and has a node for every element of the Catalog and a box drawn around nodes with the same return type
-and a numbered, directed edge out from each node pointing to a box of appropriate type corresponding to the arguments to that function.
-
-= TF-Graphs
-
-The TF-Graph is also uniquely defined by the Catalog.
-The initial catalog is a `map[name]Fragment`,
-where each fragment is a type with a single arrow
-#footnote[Let's ignore higher-kinded types (HKTs) for now.]
-mapping a tuple of input types to a single output type.
-We can represent the fragments and types in a single structure, the TF-Graph, defined as follows:
-
-+ Add a node for every fragment in the catalog
-+ Add a node for every distinct type referenced across all fragments
-+ For each fragment $F$, for each type $T$ in the set of it's arguments' types: add an edge $T -> F$.
-+ For each fragment $F$ add an edge pointing to it's return type $T$: $F -> T$.
-
-And here it is in pseudocode:
-
-```go
-catalog := Catalog()
-g := EmptyTFGraph()
-for _, frag := range catalog {
-  g.add_node(frag)
-  for _, typ := range frag.argtypes {
-    g.add_node(typ)
-    g.add_directed_edge(typ, frag)
-  }
-  g.add_node(frag.rtype)
-  g.add_directed_edge(frag, frag.rtype)
-}
-```
-
-This graph is bipartite in $F$ and $T$, i.e. fragment nodes only point to type nodes,
-and type nodes only point to fragments.
-
-= Dataflow
-
-Let's try to make dataflows and see how easy it is.
-We're going to just make an index type $->$ catalog.
+// produces a value, and two values which are
+// Let's begin by assuming that every statement in the dataflow produces a unique value.
 
