@@ -4,23 +4,37 @@
 #set heading(numbering: "1.")
 #import "@preview/fletcher:0.5.8" as fletcher: diagram, edge, node
 
+#let question(bod) = [
+  #v(1em)
+  #align(center)[#bod]
+  #v(1em)
+]
+
+
+
 = Program generation methods
 
 - Forward
-- Forward + tail weight
-- Dataflow-first
+- Forward + tail weight (a generalization of Forward)
 - Backward
+- Dataflow-first
 - Margin-guided (aka "tree-based")
-- Two-level
+- Two-level (this is really an idea for program combinators, not direct generation.)
+- Trait-based (customers impl traits with known semantics)
 
 _Each approach leads to a different distribution of programs._
 
 == Forward sampling <forward>
 
-Program generation is currently performed one line at a time ("forward") by sampling
+Program generation is currently performed one line at a time ("forward") by
 
-+ a random fragment from the catalog
-+ a random tuple of existing, appropriately typed syms as arguments.
++ sample a random fragment from the catalog
++ sample a random tuple of existing, appropriately typed syms as arguments
++ reject the fragment if the arguments don't exist.
+
+_Does this give a flat distribution across the set of possible programs?_
+
+No, it doesn't. This process leads to a bias where fragments that are easier to insert
 
 == Forward + tail weight
 
@@ -243,7 +257,7 @@ If two statements perform the same operation and have the exact same transitive 
 This can be useful if we want to repeat the same calculation at different times,
 or if the system has hidden state#footnote[it reads or writes some global mutable unreferenced by the program] that affects the results.
 
-Let's begin by enumerating *minimal dataflows*, i.e. flows where no two nodes are equivalent.
+Let's begin by enumerating *minimal dataflows*, i.e. flows where no two terms are equivalent.
 If we restrict the set of dataflows in this way then the space naturally factorizes in to layers,
 where dependencies only flow in one direction.
 
@@ -253,22 +267,26 @@ Now let's build up layers containing all valid syntactic expressions,
 where expressions in $l_i$ contain at least one reference to a term in $l_(i-1)$
 
 // We put {`0, 1`} on layer $l_0$ for total size $c_0 = 2$.
+#block(stroke: 0.05em, inset: 1em, width: 100%)[
+  `l0 = 0, 1` \
+  `l1 = 0+0, 0+1, 1+0, 1+1` \
+  `      a    b    c    d              `
+  #text(fill: gray)[definitions] \
+  `l2 = a+a, a+b, b+a, b+b, a+c, + ... `
+  #text(fill: gray)[all combinations of two $l_1$ arguments] \
+  `     a+0, 0+a, a+1, + ...           `
+  #text(fill: gray)[all combinations of one $l_1$ and one $l_0$.]
+]
 
-`l0 = 0, 1` \
-`l1 = 0+0, 0+1, 1+0, 1+1` \
-`      a    b    c    d              ` definitions \
-`l2 = a+a, a+b, b+a, b+b, a+c, + ... `
-all combinations of two $l_1$ arguments plus \
-`     a+0, 0+a, a+1, + ...           `
-all combinations of one $l_1$ and one $l_i$ where $i<1$.
+// v(1em)\ #align(center, body:body)\ #v(1em)
 
-_How many terms are there at each level?_
+#question[_How many terms are there at each level?_]
 
 Let's define $c_i = |l_i|$.
 There are two terms in $l_0$ so $c_1 = 2 times 2 = 4$,
 and then $c_2 = c_1^2 + 2c_1c_0 = 32$.
 
-The full induction is
+The the number of available terms at level $i$ is
 
 #set math.equation(numbering: "[1]")
 
@@ -276,22 +294,59 @@ $
   c_(i+1) = underbrace(#h(1em) c_i^2 #h(1em), "two from" l_i) + underbrace(2c_i C_(i-1), "one from" l_i \ "and one from" l_(j<i))
 $ <eq-1>
 
-where $C_i = sum_(j=0)^i c_j$.
+where $C_k = sum_(j=0)^k c_j$ is the total number of terms at level $k$ and below.
 
-_How many minimal dataflows have_ `n` _nodes?_
+#question[_How many minimal dataflows have_ $n$ _terms?_]
 
+A particular flow instance may not use every available term at each level,
+but instead we pick a subset of terms $m_i subset.eq l_i$,
+and our specific choices at level $i$ determine the set of possible choices at level $i+1$.
 
+If we define $h_i = |m_i|$ as the number of terms selected from level $i$
+then the number of possible terms to choose from at $i+1$, conditional on $h_(0..i) = [h_0, h_1, ..., h_i]$, is
+$ h^*_(i+1) = h_i^2 + 2h_i H_(i-1) $
+where $H_i = sum_(j=0)^i h_j$.
+This means the number of possible flows $phi_n (bold(h))$ given our choices $bold(h) = [h_0, h_1, ..., h_n]$ is just the product of these choices $vec(h_i^*, h_i)$ at every level#footnote[we know that $h_i = 0$ for $i>n$.]
+i.e.
 
+$
+  phi_n (bold(h)) = product_(i=0)^n vec(h_i^*, h_i)
+$
 
-// See @eq-1.
+where our choices for $bold(h)$ are bounded from above $h_i <= c_i$.
+And the total number of flows $Phi_n$ is
+
+$
+  Phi_n = sum_bold(h) phi_n (bold(h)) bracket.double.l h_0 + h_1 + ... = n bracket.double.r
+$
+
+i.e. the sum across all $bold(h)$ that sum to $n$ total terms.
+
+#question[What about catalogs beyond `{0, 1, +}` ?]
+
+The main ideas still hold.
+We can still segment the set of all possible terms into levels of finite size.
+Now our counts $h_(i tau)$ are conditioned on level $i$ and type $tau in {T_1, T_2, ..., T_c}$.
+And the recurrence changes
+
+$ h_((i+1) tau) = $
 
 
 === Sampling Dataflows
 
-The goal of DAG sampling is split program generation into two phases:
+Dataflow-first program generation splits the problem into two phases
 
-+ sample a random DAG
-+ randomly select a (valid) evaluation order of the nodes.
++ sample a dataflow
++ sample a valid evaluation order of the terms.
+
+When fuzzing pure, functional systems we can spend our effort sampling different dataflows,
+while for impure-dominant systems we can more easily explore subtle differences in evaluation order and timing.
+We sample a flow by,
+
++ choose $n$
++ choose $bold(h)$ consistent with $n$
++
+
 
 We believe that exploring different DAGs is important for exploring software for a few reasons.
 First, the DAG describes all the dataflow of the program.
