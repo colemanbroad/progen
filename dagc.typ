@@ -10,6 +10,8 @@
   #v(1em)
 ]
 
+#outline()
+
 = Program generation methods
 
 - Forward
@@ -32,24 +34,24 @@ Program generation is currently performed one line at a time ("forward") by
 
 #question[_Does this give a flat distribution across the set of possible programs?_]
 
-For program $r$ we build it line-by-line according to 
+For program $r$ we build it line-by-line according to
 1. sample flat over fragments : $p_1(f)$
 2. sample flat over wirings given fragment : $p_2(w|f,r)$
-    Note that the number of possible wirings $n_w (f, r)$ depends on the fragment chosen $f$
-    and on program thus far $r$. Every sym of valid type is a possibility. 
-    And the number of possible programs is $ n_p = n_"df" n_"lin"$ or it's
-    $n_p (i+1) = n_p(i) n_f n_p|f $
+  Note that the number of possible wirings $n_w (f, r)$ depends on the fragment chosen $f$
+  and on program thus far $r$. Every sym of valid type is a possibility.
+  And the number of possible programs is $n_p = n_"df" n_"lin"$ or it's
+  $n_p (i+1) = n_p(i) n_f n_p|f$
 3. goto 1
 
 No, it doesn't.
 Consider these two ways of counting the number of programs of a certain size.
 
 ```
-n_programs = n_dataflows * n_linearizations(dataflow) 
+n_programs = n_dataflows * n_linearizations(dataflow)
 
 VS
 
-n_programs(i+1) = n_programs(i) * n_fragments(program) * n_wirings(fragment, program) 
+n_programs(i+1) = n_programs(i) * n_fragments(program) * n_wirings(fragment, program)
 ```
 
 Note the multiplication above is actually a sum over valid combinations
@@ -63,14 +65,14 @@ to the recurrence because it mixes dataflow and linearization together.
 
 Because some fragment choices have more wirings in the current programs
 they will be undersampled relative to $P'(p_i|f,p_(i-1))$ i.e. a flat distribution over all programs conditional on f and pi-1.
-Fragments that consistently create more wirings across all programs will tend to be undersampled. 
-This undersampling of different wirings is programs actually points in the same direction 
+Fragments that consistently create more wirings across all programs will tend to be undersampled.
+This undersampling of different wirings is programs actually points in the same direction
 
 - P_0 is a theoretical flat distribution over all programs.
 - P_1 is the distribution resulting from dataflow-first sampling.
-- P_2 is the distribution resulting from forward sampling. 
+- P_2 is the distribution resulting from forward sampling.
 
-The 
+The
 
 Is this the same problem that flows with many linearizations will be oversampled?
 Flows with few wirings have many linearizations, so few wirings -> undersampled.
@@ -91,7 +93,7 @@ But at the same we oversample
 Fragments are sampled evenly from the catalog,
 but wiring has a preference for syms defined more recently.
 
-= Common data structures in program generation
+= Data structures for program generation
 
 Simplifications of `Program` and `Catalog` arranged from rich to poor.
 
@@ -390,17 +392,77 @@ Dataflow-first program generation splits the problem into two phases
 + sample a dataflow
 + sample a valid evaluation order of the terms.
 
+==== Type-first dataflow + duplication
+
 We can expand this factorization of dataflow-first sampling to add two new steps:
 
 + sample type-only dataflow
-+ sample appropriately typed fragments for each node
-+ potentially introduce duplications for terms with multiple references
++ sample appropriately typed fragments for each term
++ introduce optional duplications for terms with multiple references
 + sample linearization.
 
-This way we can control the importance of the type signature to the term's value,
-and then we can further control the linearization by duplicating shared terms
-which allows us to evaluate them at different times. Of course if the term is truly pure
+We can always recover the two-phase behaviour by sampling fragments at random and avoiding any duplication.
+But the additional step gives us an even smaller initial space to explore,
+and allows exploring interesting margins e.g. only using a single fragment of each type within a program.
+We can further control the linearization by duplicating shared terms
+which allows us to evaluate them at different times.
+Of course if the term is truly pure
 then this has no effect other than wasting a few clock cycles.
+
+// Sampling in this way will let us control the distribution over syntactic structures.
+
+// ```
+// Prog_n = set of programs length n.\
+// P0<n> = flat distribution across Prog_n.\
+// PP[p' = p+frag+wiring] = PP[p] * PP[frag] * PP[wiring|frag,p]. --- No summation required, because p' is guaranteed unique.
+// ```
+
+==== Bias analysis
+
+Let's contrast this approach with forward sampling (@forward).
+Consider a random program $p_0^n$ where $PP[p_0^n]$ is flat across all programs of length $n$,
+and a random program $p_1^n$ created by forward generation.
+The forward generation method can be written
+
+// Below P_1(n+1) is a distribution over programs of length n+1.
+// $
+//   P_1(n+1) = sum_(p ~ P_1(n)) #h(0.8em) sum_(f ~ PP("frag"|p)) PP("wiring"|"frag", p)
+// $
+
+// $
+//   P_1^(n+1)[p'] = P_1^n [p] dot PP["frag"] dot PP[p' = p + "frag" + "wiring"|"frag", p]
+// $ <forward-probability>
+
+$
+  p_1^(n+1) = p_1^n plus.circle_1 "frag"^(n+1) plus.circle_2 "wiring"("frag",p_1^n)
+$ <forward-probability>
+where $plus.circle$ operators are evaluated left to right.
+
+We have $PP[p_1^(n+1)] = PP[p_1^n] * PP["frag"] * PP["wiring"|"frag", p_1^n]$
+
+// $
+//   p_1^(n+1) = g(f(p_1^n, "frag"), "wiring"("frag",p_1^n))
+// $ <forward-probability>
+// where
+
+#horizontalrule
+
+By sampling flat across fragments this procedure tends to undersample, relative to $p_0^n$, fragments
++ with many arguments // --- more arguments $=>$ more possible wirings
++ with arguments depending on common types // --- more potential inputs $=>$ more possible wirings
++ that produce a common type // --- easier future reuse $=>$ more possible wirings
+because they lead to more possible wirings, and we don't take that into account when sampling the fragment.
+We could compensate for this by conditioning $"frag"(n,p_1^n)$.
+
+#question[_What are the distributions over dataflow derived from $P_0$ and $P_1$?_]
+
+The distribution derived from $P_0$ is the marginal $P^*_0[d] = sum_(p in cal(D)) P_0[p]$ where $cal(D) = {p | "flow"(p) = d}$ is the
+function that reduces a program $p$ to it's dataflow.
+This distribution is biased in favor of flows with many possible corresponding programs (many possible linearizations) or equivalently fewer wires.
+
+
+
+
 
 #horizontalrule
 
@@ -410,7 +472,6 @@ We sample a flow by,
 
 + choose $n$
 + choose $bold(h)$ consistent with $n$
-+
 
 #horizontalrule
 
