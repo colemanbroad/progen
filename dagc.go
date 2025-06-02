@@ -19,31 +19,35 @@ import (
 // 		We could keep track of distributions???
 // Then we
 
-type MyType uint32
+type MyType = Type
 
 const (
-	A MyType = iota
-	B
-	C
-	D
+	A MyType = "A"
+	B MyType = "B"
+	C MyType = "C"
+	D MyType = "D"
 )
 
-type FnT struct {
-	atypes []MyType
-	rtype  MyType
+func FnT(name string, ptypes []MyType, rtype MyType) Fun {
+	return Fun{
+		value:  nil,
+		name:   name,
+		ptypes: ptypes,
+		rtype:  rtype,
+	}
 }
 
 var (
-	f = FnT{[]MyType{}, A}
-	g = FnT{[]MyType{}, B}
-	h = FnT{[]MyType{A, B}, C}
-	i = FnT{[]MyType{}, A}
-	j = FnT{[]MyType{A}, A}
-	k = FnT{[]MyType{A, C}, A}
-	l = FnT{[]MyType{A, C}, D}
+	f = FnT("f", []MyType{}, A)
+	g = FnT("g", []MyType{}, B)
+	h = FnT("h", []MyType{A, B}, C)
+	i = FnT("i", []MyType{}, A)
+	j = FnT("j", []MyType{A}, A)
+	k = FnT("k", []MyType{A, C}, A)
+	l = FnT("l", []MyType{A, C}, D)
 )
 
-type Cata map[string]FnT
+type Cata map[string]Fun
 
 // A smarter way might be to just map between names.
 type TypeCatalog struct {
@@ -51,6 +55,7 @@ type TypeCatalog struct {
 	out map[MyType][]string // funcs requiring T
 }
 
+// Inverts a catalog to find fns which provide/require a given type.
 func buildTypeCatalog(catalog Cata) TypeCatalog {
 	cg := TypeCatalog{
 		in:  map[MyType][]string{},
@@ -60,7 +65,7 @@ func buildTypeCatalog(catalog Cata) TypeCatalog {
 		funcs, _ := cg.in[f.rtype]
 		funcs = append(funcs, name)
 		cg.in[f.rtype] = funcs
-		for _, a := range f.atypes {
+		for _, a := range f.ptypes {
 			funcs, _ := cg.out[a]
 			funcs = append(funcs, name)
 			cg.out[a] = funcs
@@ -69,7 +74,7 @@ func buildTypeCatalog(catalog Cata) TypeCatalog {
 	return cg
 }
 
-func main() {
+func test_dagc() {
 	catalog := Cata{
 		"f": f, "g": g, "h": h,
 		"i": i, "j": j, "k": k,
@@ -82,8 +87,8 @@ func main() {
 	fmt.Printf("cg := %+v \n", cata2)
 
 	determineLevel(catalog, cata2)
-	tc := typecat(catalog, cata2)
-	fmt.Printf("%+v \n", tc)
+	type_index := buildTypeIndex(catalog, cata2)
+	fmt.Printf("%+v \n", type_index)
 }
 
 // We can use the TF-Graph to build an index of types and their trasitive requirements.
@@ -104,7 +109,7 @@ func determineLevel(catalog Cata, cat2 TypeCatalog) {
 		starting_set := NewSetFromSlice(tset.Elements())
 		// TODO: we shouldn't need to iterate over previously added Fns
 		for name, f := range catalog {
-			inputset := NewSetFromSlice(f.atypes)
+			inputset := NewSetFromSlice(f.ptypes)
 			if inputset.Difference(starting_set).Size() != 0 {
 				continue
 			}
@@ -136,16 +141,16 @@ func determineLevel(catalog Cata, cat2 TypeCatalog) {
 	fmt.Printf("%+v \n", lvlT)
 }
 
-func (m *FnT) ToBytes2() ([]byte, error) {
+func (m *Fun) ToBytes2() ([]byte, error) {
 	buf := &bytes.Buffer{}
 	if err := binary.Write(buf, binary.LittleEndian, m.rtype); err != nil {
 		return nil, err
 	}
-	length := uint32(len(m.atypes))
+	length := uint32(len(m.ptypes))
 	if err := binary.Write(buf, binary.LittleEndian, length); err != nil {
 		return nil, err
 	}
-	for _, val := range m.atypes {
+	for _, val := range m.ptypes {
 		if err := binary.Write(buf, binary.LittleEndian, val); err != nil {
 			return nil, err
 		}
@@ -153,26 +158,26 @@ func (m *FnT) ToBytes2() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (m *FnT) ToBytes() []byte {
+func (m *Fun) ToBytes() []byte {
 	if m == nil {
 		panic("nope")
 	}
 	buf := &bytes.Buffer{}
 	binary.Write(buf, binary.LittleEndian, m.rtype)
-	binary.Write(buf, binary.LittleEndian, uint32(len(m.atypes)))
-	for _, val := range m.atypes {
+	binary.Write(buf, binary.LittleEndian, uint32(len(m.ptypes)))
+	for _, val := range m.ptypes {
 		binary.Write(buf, binary.LittleEndian, val)
 	}
 	return buf.Bytes()
 }
 
-func (m *FnT) hashOf() uint32 {
+func (m *Fun) hashOf() uint32 {
 	by := m.ToBytes()
 	return crc32.ChecksumIEEE(by)
 }
 
-// Build index from Type to Fragments.
-func typecat(catalog Cata, cat2 TypeCatalog) map[uint32][]string {
+// Build index from hash(Type) to []Fragment.name.
+func buildTypeIndex(catalog Cata, cat2 TypeCatalog) map[uint32][]string {
 	typecat := map[uint32][]string{}
 	for name, fn := range catalog {
 		l, ok := typecat[fn.hashOf()]
@@ -183,6 +188,26 @@ func typecat(catalog Cata, cat2 TypeCatalog) map[uint32][]string {
 		typecat[fn.hashOf()] = l
 	}
 	return typecat
+}
+
+func sampleDataflow() {
+
+	zero := FnT("zero", []MyType{"int", "int"}, "int")
+	zero.value = func() int { return 0 }
+	one := FnT("one", []MyType{"int", "int"}, "int")
+	one.value = func() int { return 1 }
+	plus := FnT("plus", []MyType{"int", "int"}, "int")
+	plus.value = func(a, b int) int { return a + b }
+
+	catalog := Cata{
+		"00": zero,
+		"11": one,
+		"++": plus,
+	}
+
+	tc := buildTypeCatalog(catalog)
+	fmt.Printf("tc = %#v \n", tc)
+
 }
 
 // Now that we have the index from Type -> Fragments we can start with building

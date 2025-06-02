@@ -13,6 +13,13 @@ func init() {
 }
 
 func main() {
+
+	test_dagc()
+
+	sampleDataflow()
+
+	os.Exit(0)
+
 	gob := flag.Int("n", -1, "Can we build it? Yes we can!")
 	lib := NewLib()
 	flag.Parse()

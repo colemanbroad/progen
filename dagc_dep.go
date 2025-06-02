@@ -1,10 +1,11 @@
+package main
 
-
+import "fmt"
 
 func mapit(catalog Cata) {
 	t0 := map[MyType]int{}
 	for _, fn := range catalog {
-		if len(fn.atypes) == 0 {
+		if len(fn.ptypes) == 0 {
 			fmt.Println(fn)
 			cnt, ok := t0[fn.rtype]
 			if !ok {
@@ -16,7 +17,7 @@ func mapit(catalog Cata) {
 
 	ts := NewSetFromMapKeys(t0)
 	for _, fn := range catalog {
-		ltypes := NewSetFromSlice(fn.atypes)
+		ltypes := NewSetFromSlice(fn.ptypes)
 		if ltypes.Difference(ts).Size() == 0 {
 			fmt.Println(fn)
 			cnt, ok := t0[fn.rtype]
@@ -30,25 +31,25 @@ func mapit(catalog Cata) {
 
 }
 
-type TNode struct {
-	name string
-	T    MyType
-	out  []*FNode
-	in   []*FNode
-}
+// type TNode struct {
+// 	name string
+// 	T    MyType
+// 	out  []*FNode
+// 	in   []*FNode
+// }
 
-type FNode struct {
-	name string
-	fn   FnT
-	out  *TNode
-	in   []*TNode
-}
+// type FNode struct {
+// 	name string
+// 	fn   Fun
+// 	out  *TNode
+// 	in   []*TNode
+// }
 
-// The actual T,F Nodes live here, and they contain pointers to each other.
-type CataGraph struct {
-	ts map[MyType]TNode
-	fs map[string]FNode // name of function
-}
+// // The actual T,F Nodes live here, and they contain pointers to each other.
+// type CataGraph struct {
+// 	ts map[MyType]TNode
+// 	fs map[string]FNode // name of function
+// }
 
 // func newCataGraph(catalog []FnT) CataGraph {
 // 	cg := CataGraph{}
