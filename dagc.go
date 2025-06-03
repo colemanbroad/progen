@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"hash/crc32"
+	"math/rand/v2"
 )
 
 // We want to count the number of ways of making any type available in the catalog.
@@ -190,12 +191,113 @@ func buildTypeIndex(catalog Cata, cat2 TypeCatalog) map[uint32][]string {
 	return typecat
 }
 
-// type Node struct {
-// 	f Fun
-// }
+// Set of Nodes represented by index in DataFlow.nodes
+// type Nodeset *Set[uint]
+type Level = uint16
+type Node struct {
+	fn        Fun
+	level     Level
+	arg_nodes []uint
+}
+
+// DataFlow describes the complete flow of data in the program.
+// Each node contains reference to previous nodes
+type DataFlow struct {
+	nodes     []Node
+	max_level uint
+}
+
 // type DataFlow struct {
-// 	nodes []Statement
+// 	nodes           []Node
+// 	levels          map[Level]map[Type]Nodeset
+// 	max_level       uint
+// 	available_types *Set[Type]
 // }
+
+func NewDataFlow() DataFlow {
+	return DataFlow{
+		nodes:     []Node{},
+		max_level: 0,
+	}
+}
+
+// func NewDataFlow() DataFlow {
+// 	return DataFlow{
+// 		nodes:  []Node{},
+// 		levels: map[Level]map[Type]Nodeset{},
+// 	}
+// }
+
+// func (d DataFlow) buildable(ptypes []Type) bool {
+// 	for _, t := range ptypes {
+// 		if !d.available_types.Contains(t) {
+// 			return false
+// 		}
+// 	}
+// 	return true
+// }
+
+// Given a partial DataFlow and a catalog, randomly
+// sample a Type/Fragment to add at the current level.
+// We don't know which fragments are valid at the current level
+// until we try them. We could randomly sample fragments and
+// attempt to add them, but we want
+// The
+func (d DataFlow) addNode(catalog Cata) {
+}
+
+func (d DataFlow) getTypeSet(min_level, max_level Level) *Set[Type] {
+	s := NewSet[Type]()
+	for _, n := range d.nodes {
+		b0 := n.level >= min_level
+		b1 := n.level <= max_level
+		if b0 && b1 {
+			s.Add(n.fn.rtype)
+		}
+	}
+	return s
+}
+
+func (d DataFlow) getBuildableTypes(catalog Cata, reqd, optional *Set[Type]) *Set[uint32] {
+	s := NewSet[uint32]()
+	for _, fun := range catalog {
+		a := NewSetFromSlice(fun.ptypes)
+		if a.Intersection(reqd).Size() == 0 {
+			continue
+		}
+		if a.Difference(optional).Size() > 0 {
+			continue
+		}
+		s.Add(fun.hashOf())
+	}
+	return s
+}
+
+func createDataFlow(catalog Cata) {
+	flow := NewDataFlow()
+	maxlevel := Level(3)
+	level := Level(0)
+	for level <= maxlevel {
+		n_terms := 0
+		// Add some terms to the current level.
+		// Terms are chosen from the set of possible ones: h_i^*
+		// This set is too large to build explicitly, so we're going to break it down and sample it instead.
+
+		// Once we know that a fragment is ACTUALLY, properly buildable,
+		// then we go about sampling args (node indices of appropriate type).
+		// Then we can add it!
+		// t0 := flow.getRTypeSet(min_level=0, max_level=level-1)
+		// t1 := flow.getRTypeSet(min_level=level-1, max_level=level-1)
+		// fnt2 := flow.getBuildableFnTypes(catalog, necessary=t1, optional=t1)
+		// t_chosen := multiSampleN(set=fnt2,n=5) // n may be greater than len(set)
+		// nodes := chooseWires(t_chosen, necessary=t0, optional=t1)
+		t0 := flow.getTypeSet(level-1, level-1)
+		t1 := flow.getTypeSet(0, level-1)
+		t2 := flow.getBuildableTypes(catalog, t0, t1)
+
+		level += 1
+	}
+}
 
 func sampleDataflow() {
 
@@ -212,8 +314,11 @@ func sampleDataflow() {
 		"++": plus,
 	}
 
-	tc := buildTypeCatalog(catalog)
-	fmt.Printf("tc = %#v \n", tc)
+	// tc := buildTypeCatalog(catalog)
+	// fmt.Printf("tc = %#v \n", tc)
+
+	df := createDataFlow(catalog)
+	fmt.Printf("%+v\n", df)
 
 	// The plan is to eventually
 	// 0. pick n
@@ -224,59 +329,7 @@ func sampleDataflow() {
 	// Termset is insufficient, because we need to know WHO to attach to!
 	// Not just Fun, But something like a full blown Statement!
 
-	type Termset = *Set[*Fun]
-	terms := map[uint16]map[Type]Termset{}
-
-	// level 0 first
-
-	catalog_used := NewSet[string]()
-	available_types := NewSet[Type]()
-
-	// This works for zero-arguments types as well!
-	buildable := func(ptypes []Type) bool {
-		for _, t := range ptypes {
-			if !available_types.Contains(t) {
-				return false
-			}
-		}
-		return true
-	}
-
-	level := uint16(0)
-	for catalog_used.Size() < len(catalog) {
-		newtypes := NewSet[Type]()
-		terms[level] = map[Type]*Set[*Fun]{}
-		fmt.Printf("terms = %+v \n", terms)
-		fmt.Println("size comparison : ", catalog_used.Size(), len(catalog))
-		terms[level] = map[Type]*Set[*Fun]{}
-		for name, f := range catalog {
-			b0 := catalog_used.Contains(name)
-			// b1 := len(f.ptypes) == 0
-			b2 := buildable(f.ptypes)
-			if b0 || !b2 {
-				fmt.Println("f = ", f)
-				fmt.Println("b0, b2 = ", b0, b2)
-				continue
-			}
-			termset, ok := terms[level][f.rtype]
-			if !ok {
-				termset = NewSet[*Fun]()
-				termset.Add(&f)
-				terms[level][f.rtype] = termset
-				fmt.Printf("terms = %+v \n", terms)
-			} else {
-				termset.Add(&f)
-			}
-			catalog_used.Add(name)
-			newtypes.Add(f.rtype)
-		}
-		level += 1
-		for _, t := range newtypes.Elements() {
-			available_types.Add(t)
-		}
-	}
-
-	fmt.Printf("terms = %+v \n", terms)
+	// fmt.Printf("terms = %+v \n", flow.levels)
 
 	// terms : (lvl:int, t:type) -> Set<Term>
 	// How do we know what values are available in terms[i+1] given terms[0:i] ?
