@@ -93,6 +93,135 @@ But at the same we oversample
 Fragments are sampled evenly from the catalog,
 but wiring has a preference for syms defined more recently.
 
+== Dataflow-first
+
+Dataflow-first program generation splits the problem into two phases
+
++ sample a dataflow
++ sample a valid evaluation order of the terms.
+
+=== Type-first dataflow + duplication
+
+We can expand this factorization of dataflow-first sampling to add two new steps:
+
++ sample type-only dataflow
++ sample appropriately typed fragments for each term
++ introduce optional duplications for terms with multiple references
++ sample linearization.
+
+We can always recover the two-phase behaviour by sampling fragments at random and avoiding any duplication.
+But the additional step gives us an even smaller initial space to explore,
+and allows exploring interesting margins e.g. only using a single fragment of each type within a program.
+We can further control the linearization by duplicating shared terms
+which allows us to evaluate them at different times.
+Of course if the term is truly pure
+then this has no effect other than wasting a few clock cycles.
+
+// Sampling in this way will let us control the distribution over syntactic structures.
+
+// ```
+// Prog_n = set of programs length n.\
+// P0<n> = flat distribution across Prog_n.\
+// PP[p' = p+frag+wiring] = PP[p] * PP[frag] * PP[wiring|frag,p]. --- No summation required, because p' is guaranteed unique.
+// ```
+
+=== Bias analysis
+
+Let's contrast this approach with forward sampling (@forward).
+Consider a random program $p_0^n$ where $PP[p_0^n]$ is flat across all programs of length $n$,
+and a random program $p_1^n$ created by forward generation.
+The forward generation method can be written
+
+// Below P_1(n+1) is a distribution over programs of length n+1.
+// $
+//   P_1(n+1) = sum_(p ~ P_1(n)) #h(0.8em) sum_(f ~ PP("frag"|p)) PP("wiring"|"frag", p)
+// $
+
+// $
+//   P_1^(n+1)[p'] = P_1^n [p] dot PP["frag"] dot PP[p' = p + "frag" + "wiring"|"frag", p]
+// $ <forward-probability>
+
+$
+  p_1^(n+1) = p_1^n plus.circle_1 "frag"^(n+1) plus.circle_2 "wiring"("frag",p_1^n)
+$ <forward-probability>
+where $plus.circle$ operators are evaluated left to right. Here $"frag"$ is a random fragment
+chosen from a flat distribution across the catalog and $"wiring"$ is a tuple of random syms
+selected from $p_1^n$ that match the required types of $"frag"$.
+
+The probabilities associated with these random variables simply multiply,
+$ PP[p_1^(n+1)] = PP[p_1^n] dot PP["frag"] dot PP["wiring"|"frag", p_1^n] $
+because every choice of $"frag"^(n+1)$ and $"wiring"("frag", p_1^n)$ leads to a unique $p_1^(n+1)$.
+
+// $
+//   p_1^(n+1) = g(f(p_1^n, "frag"), "wiring"("frag",p_1^n))
+// $ <forward-probability>
+// where
+
+#horizontalrule
+
+By sampling flat across fragments this procedure tends to undersample, relative to $p_0^n$, fragments
++ with many arguments // --- more arguments $=>$ more possible wirings
++ with arguments depending on common types // --- more potential inputs $=>$ more possible wirings
++ that produce a common type // --- easier future reuse $=>$ more possible wirings
+because they lead to more possible wirings, and we don't take that into account when sampling the fragment.
+We could compensate for this by conditioning $"frag"(n,p_1^n)$.
+
+#question[_What are the distributions over dataflow derived from $P_0$ and $P_1$?_]
+
+The distribution derived from $P_0$ is the marginal $P^*_0[d] = sum_(p in cal(D)) P_0[p]$ where $cal(D) = {p | "flow"(p) = d}$ is the
+function that reduces a program $p$ to it's dataflow.
+This distribution is biased in favor of flows with many possible corresponding programs (many possible linearizations) or equivalently fewer wires.
+
+
+#horizontalrule
+
+When fuzzing pure, functional systems we can spend our effort sampling different dataflows,
+while for impure-dominant systems we can more easily explore subtle differences in evaluation order and timing.
+We sample a flow by,
+
++ choose $n$
++ choose $bold(h)$ consistent with $n$
+
+#horizontalrule
+
+We believe that exploring different DAGs is important for exploring software for a few reasons.
+First, the DAG describes all the dataflow of the program.
+So, to the extent that the system is pure, it's entire behaviour is determined by the DAG,
+and all programs with identical DAGs are equivalent.
+By implication, to the extent that the system is impure, it's entire behaviour is determined increasingly by the timing of fragment executions,
+and not based on program dataflow.
+We would like to control the dataflow as well as the order/timing of execution explicitly!
+And we don't want either to be determined by the type signature of what happens to be in the catalog
+(other than supplying basic constraints on the space).
+_The catalog constrains the space of programs,
+but it shouldn't bias the distribuion over that space!_
+
+@forward[_Foward sampling_] is unable to sample evenly across DAGs,
+because selecting fragments _first_ biases the distribution.
+E.g. if we sample a fragment with no arguments then it will be inserted every time.
+This adds new root nodes to the DAG and means the growth rate of root nodes is beyond our control and depends on the catalog composition.
+A potential solution to this problem is to adjust the probability of sampling fragments depending upon their type.
+E.g. we may want to make it less likely that fragments with simple types are inserted into the program,
+or even place hard constraints on the number of fragments of a given type that are allowed.
+
+#horizontalrule
+
+One factorization of programs is
+
+1. pick a DAG where nodes are equivalent up to type
+2. pick a fragment for each node / type
+3. pick a linearization for the DAG.
+
+Another is
+
+#horizontalrule
+
+How can we count DAGs? Look at R. Stanley's _Enumerative Combinatorics_ for the answer.
+
+
+// produces a value, and two values which are
+// Let's begin by assuming that every statement in the dataflow produces a unique value.
+
 = Data structures for program generation
 
 Simplifications of `Program` and `Catalog` arranged from rich to poor.
@@ -384,132 +513,4 @@ $l_i mapsto l_i (tau)$, and possible arguments are now constrained by this type.
 // And the recurrence changes
 
 // $ h_(i+1) (tau) = h_i (tau) $
-
-=== Sampling Dataflows
-
-Dataflow-first program generation splits the problem into two phases
-
-+ sample a dataflow
-+ sample a valid evaluation order of the terms.
-
-==== Type-first dataflow + duplication
-
-We can expand this factorization of dataflow-first sampling to add two new steps:
-
-+ sample type-only dataflow
-+ sample appropriately typed fragments for each term
-+ introduce optional duplications for terms with multiple references
-+ sample linearization.
-
-We can always recover the two-phase behaviour by sampling fragments at random and avoiding any duplication.
-But the additional step gives us an even smaller initial space to explore,
-and allows exploring interesting margins e.g. only using a single fragment of each type within a program.
-We can further control the linearization by duplicating shared terms
-which allows us to evaluate them at different times.
-Of course if the term is truly pure
-then this has no effect other than wasting a few clock cycles.
-
-// Sampling in this way will let us control the distribution over syntactic structures.
-
-// ```
-// Prog_n = set of programs length n.\
-// P0<n> = flat distribution across Prog_n.\
-// PP[p' = p+frag+wiring] = PP[p] * PP[frag] * PP[wiring|frag,p]. --- No summation required, because p' is guaranteed unique.
-// ```
-
-==== Bias analysis
-
-Let's contrast this approach with forward sampling (@forward).
-Consider a random program $p_0^n$ where $PP[p_0^n]$ is flat across all programs of length $n$,
-and a random program $p_1^n$ created by forward generation.
-The forward generation method can be written
-
-// Below P_1(n+1) is a distribution over programs of length n+1.
-// $
-//   P_1(n+1) = sum_(p ~ P_1(n)) #h(0.8em) sum_(f ~ PP("frag"|p)) PP("wiring"|"frag", p)
-// $
-
-// $
-//   P_1^(n+1)[p'] = P_1^n [p] dot PP["frag"] dot PP[p' = p + "frag" + "wiring"|"frag", p]
-// $ <forward-probability>
-
-$
-  p_1^(n+1) = p_1^n plus.circle_1 "frag"^(n+1) plus.circle_2 "wiring"("frag",p_1^n)
-$ <forward-probability>
-where $plus.circle$ operators are evaluated left to right.
-
-We have $PP[p_1^(n+1)] = PP[p_1^n] * PP["frag"] * PP["wiring"|"frag", p_1^n]$
-
-// $
-//   p_1^(n+1) = g(f(p_1^n, "frag"), "wiring"("frag",p_1^n))
-// $ <forward-probability>
-// where
-
-#horizontalrule
-
-By sampling flat across fragments this procedure tends to undersample, relative to $p_0^n$, fragments
-+ with many arguments // --- more arguments $=>$ more possible wirings
-+ with arguments depending on common types // --- more potential inputs $=>$ more possible wirings
-+ that produce a common type // --- easier future reuse $=>$ more possible wirings
-because they lead to more possible wirings, and we don't take that into account when sampling the fragment.
-We could compensate for this by conditioning $"frag"(n,p_1^n)$.
-
-#question[_What are the distributions over dataflow derived from $P_0$ and $P_1$?_]
-
-The distribution derived from $P_0$ is the marginal $P^*_0[d] = sum_(p in cal(D)) P_0[p]$ where $cal(D) = {p | "flow"(p) = d}$ is the
-function that reduces a program $p$ to it's dataflow.
-This distribution is biased in favor of flows with many possible corresponding programs (many possible linearizations) or equivalently fewer wires.
-
-
-
-
-
-#horizontalrule
-
-When fuzzing pure, functional systems we can spend our effort sampling different dataflows,
-while for impure-dominant systems we can more easily explore subtle differences in evaluation order and timing.
-We sample a flow by,
-
-+ choose $n$
-+ choose $bold(h)$ consistent with $n$
-
-#horizontalrule
-
-We believe that exploring different DAGs is important for exploring software for a few reasons.
-First, the DAG describes all the dataflow of the program.
-So, to the extent that the system is pure, it's entire behaviour is determined by the DAG,
-and all programs with identical DAGs are equivalent.
-By implication, to the extent that the system is impure, it's entire behaviour is determined increasingly by the timing of fragment executions,
-and not based on program dataflow.
-We would like to control the dataflow as well as the order/timing of execution explicitly!
-And we don't want either to be determined by the type signature of what happens to be in the catalog
-(other than supplying basic constraints on the space).
-_The catalog constrains the space of programs,
-but it shouldn't bias the distribuion over that space!_
-
-@forward[_Foward sampling_] is unable to sample evenly across DAGs,
-because selecting fragments _first_ biases the distribution.
-E.g. if we sample a fragment with no arguments then it will be inserted every time.
-This adds new root nodes to the DAG and means the growth rate of root nodes is beyond our control and depends on the catalog composition.
-A potential solution to this problem is to adjust the probability of sampling fragments depending upon their type.
-E.g. we may want to make it less likely that fragments with simple types are inserted into the program,
-or even place hard constraints on the number of fragments of a given type that are allowed.
-
-#horizontalrule
-
-One factorization of programs is
-
-1. pick a DAG where nodes are equivalent up to type
-2. pick a fragment for each node / type
-3. pick a linearization for the DAG.
-
-Another is
-
-#horizontalrule
-
-How can we count DAGs? Look at R. Stanley's _Enumerative Combinatorics_ for the answer.
-
-
-// produces a value, and two values which are
-// Let's begin by assuming that every statement in the dataflow produces a unique value.
 

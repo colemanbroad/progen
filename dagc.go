@@ -84,11 +84,11 @@ func test_dagc() {
 	fmt.Println(catalog)
 
 	cata2 := buildTypeCatalog(catalog)
-	fmt.Printf("cg := %+v \n", cata2)
+	fmt.Printf("cata2 (TypeCatalog) := %+v \n", cata2)
 
 	determineLevel(catalog, cata2)
 	type_index := buildTypeIndex(catalog, cata2)
-	fmt.Printf("%+v \n", type_index)
+	fmt.Printf("type_index (map[u32][]string) = %+v \n", type_index)
 }
 
 // We can use the TF-Graph to build an index of types and their trasitive requirements.
@@ -137,8 +137,8 @@ func determineLevel(catalog Cata, cat2 TypeCatalog) {
 		level += 1
 	}
 
-	fmt.Printf("%+v \n", lvlF)
-	fmt.Printf("%+v \n", lvlT)
+	fmt.Printf("lvlF = %+v \n", lvlF)
+	fmt.Printf("lvlT = %+v \n", lvlT)
 }
 
 func (m *Fun) ToBytes2() ([]byte, error) {
@@ -190,11 +190,18 @@ func buildTypeIndex(catalog Cata, cat2 TypeCatalog) map[uint32][]string {
 	return typecat
 }
 
+// type Node struct {
+// 	f Fun
+// }
+// type DataFlow struct {
+// 	nodes []Statement
+// }
+
 func sampleDataflow() {
 
-	zero := FnT("zero", []MyType{"int", "int"}, "int")
+	zero := FnT("zero", []MyType{}, "int")
 	zero.value = func() int { return 0 }
-	one := FnT("one", []MyType{"int", "int"}, "int")
+	one := FnT("one", []MyType{}, "int")
 	one.value = func() int { return 1 }
 	plus := FnT("plus", []MyType{"int", "int"}, "int")
 	plus.value = func(a, b int) int { return a + b }
@@ -207,6 +214,83 @@ func sampleDataflow() {
 
 	tc := buildTypeCatalog(catalog)
 	fmt.Printf("tc = %#v \n", tc)
+
+	// The plan is to eventually
+	// 0. pick n
+	// 1. pick bold(h) = h0, h1, ..., hn
+	// 2. pick m_i = h^*_i choose h_i  foreach i in [n]
+	// 3. randomly linearize
+
+	// Termset is insufficient, because we need to know WHO to attach to!
+	// Not just Fun, But something like a full blown Statement!
+
+	type Termset = *Set[*Fun]
+	terms := map[uint16]map[Type]Termset{}
+
+	// level 0 first
+
+	catalog_used := NewSet[string]()
+	available_types := NewSet[Type]()
+
+	// This works for zero-arguments types as well!
+	buildable := func(ptypes []Type) bool {
+		for _, t := range ptypes {
+			if !available_types.Contains(t) {
+				return false
+			}
+		}
+		return true
+	}
+
+	level := uint16(0)
+	for catalog_used.Size() < len(catalog) {
+		newtypes := NewSet[Type]()
+		terms[level] = map[Type]*Set[*Fun]{}
+		fmt.Printf("terms = %+v \n", terms)
+		fmt.Println("size comparison : ", catalog_used.Size(), len(catalog))
+		terms[level] = map[Type]*Set[*Fun]{}
+		for name, f := range catalog {
+			b0 := catalog_used.Contains(name)
+			// b1 := len(f.ptypes) == 0
+			b2 := buildable(f.ptypes)
+			if b0 || !b2 {
+				fmt.Println("f = ", f)
+				fmt.Println("b0, b2 = ", b0, b2)
+				continue
+			}
+			termset, ok := terms[level][f.rtype]
+			if !ok {
+				termset = NewSet[*Fun]()
+				termset.Add(&f)
+				terms[level][f.rtype] = termset
+				fmt.Printf("terms = %+v \n", terms)
+			} else {
+				termset.Add(&f)
+			}
+			catalog_used.Add(name)
+			newtypes.Add(f.rtype)
+		}
+		level += 1
+		for _, t := range newtypes.Elements() {
+			available_types.Add(t)
+		}
+	}
+
+	fmt.Printf("terms = %+v \n", terms)
+
+	// terms : (lvl:int, t:type) -> Set<Term>
+	// How do we know what values are available in terms[i+1] given terms[0:i] ?
+	// We do:
+	//   terms[i+1] = union l[i+1, t] forall t in types
+	// where
+	//   l[i+1, t] = union values(l[:i], fn, i) forall fn in Catalog where fn.rtype = t
+	// where
+	//   values(terms, fn, i) = "all possible combinations of arguments to fn taken"
+	//
+	// OK, wait... We need to index the catalog by hash(fn.type) when doing type-first flow gen,
+	// but when building the flow we need to index `terms` by fn.rtype.
+	// Do we need to index `terms` by hash(fn.type) ?
+	//
 
 }
 
