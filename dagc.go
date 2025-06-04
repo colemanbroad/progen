@@ -87,8 +87,8 @@ func test_dagc() {
 	cata2 := buildTypeCatalog(catalog)
 	fmt.Printf("cata2 (TypeCatalog) := %+v \n", cata2)
 
-	determineLevel(catalog, cata2)
-	type_index := buildTypeIndex(catalog, cata2)
+	determineLevel(catalog)
+	type_index := buildTypeIndex(catalog)
 	fmt.Printf("type_index (map[u32][]string) = %+v \n", type_index)
 }
 
@@ -97,13 +97,15 @@ func test_dagc() {
 // We can assign a level to every F and T, which begins at zero for F : () -> T foreach T,
 // and zero foreach T produced by each F. Then it increments to one for F : T -> T2 that require only
 // T : lvl=0 and then T produced by those F *and not already a lower level*.
-func determineLevel(catalog Cata, cat2 TypeCatalog) {
+func determineLevel(catalog Cata) {
 	lvlF := map[string]int{}
 	lvlT := map[MyType]int{}
 
 	tset := NewSet[MyType]()
 	fset := NewSet[string]()
 	level := 0
+
+	// c
 
 	for fset.Size() < len(catalog) {
 		addedOne := false
@@ -178,7 +180,7 @@ func (m *Fun) hashOf() uint32 {
 }
 
 // Build index from hash(Type) to []Fragment.name.
-func buildTypeIndex(catalog Cata, cat2 TypeCatalog) map[uint32][]string {
+func buildTypeIndex(catalog Cata) map[uint32][]string {
 	typecat := map[uint32][]string{}
 	for name, fn := range catalog {
 		l, ok := typecat[fn.hashOf()]
@@ -207,45 +209,6 @@ type DataFlow struct {
 	max_level uint
 }
 
-// type DataFlow struct {
-// 	nodes           []Node
-// 	levels          map[Level]map[Type]Nodeset
-// 	max_level       uint
-// 	available_types *Set[Type]
-// }
-
-func NewDataFlow() DataFlow {
-	return DataFlow{
-		nodes:     []Node{},
-		max_level: 0,
-	}
-}
-
-// func NewDataFlow() DataFlow {
-// 	return DataFlow{
-// 		nodes:  []Node{},
-// 		levels: map[Level]map[Type]Nodeset{},
-// 	}
-// }
-
-// func (d DataFlow) buildable(ptypes []Type) bool {
-// 	for _, t := range ptypes {
-// 		if !d.available_types.Contains(t) {
-// 			return false
-// 		}
-// 	}
-// 	return true
-// }
-
-// Given a partial DataFlow and a catalog, randomly
-// sample a Type/Fragment to add at the current level.
-// We don't know which fragments are valid at the current level
-// until we try them. We could randomly sample fragments and
-// attempt to add them, but we want
-// The
-func (d DataFlow) addNode(catalog Cata) {
-}
-
 func (d DataFlow) getTypeSet(min_level, max_level Level) *Set[Type] {
 	s := NewSet[Type]()
 	for _, n := range d.nodes {
@@ -253,6 +216,37 @@ func (d DataFlow) getTypeSet(min_level, max_level Level) *Set[Type] {
 		b1 := n.level <= max_level
 		if b0 && b1 {
 			s.Add(n.fn.rtype)
+		}
+	}
+	return s
+}
+
+func (d DataFlow) findArgNodesForFn(fn Fun, lvl Level) []uint {
+	s := []uint{}
+	for _, a := range fn.ptypes {
+		n1 := d.getNodesOfTypeWhereLevel(a, lvl-1, lvl-1)
+		n2 := d.getNodesOfTypeWhereLevel(a, 0, lvl-1)
+		n3 := n1.Union(n2)
+		if n3.Size() == 0 {
+			panic("unreachable")
+		}
+		ret, err := n3.Sample()
+		if err != nil {
+			panic("impossible")
+		}
+		s = append(s, uint(ret))
+	}
+	return s
+}
+
+func (d DataFlow) getNodesOfTypeWhereLevel(typ Type, min_level, max_level Level) *Set[int] {
+	s := NewSet[int]()
+	for i, n := range d.nodes {
+		b0 := n.level >= min_level
+		b1 := n.level <= max_level
+		b2 := n.fn.rtype == typ
+		if b0 && b1 && b2 {
+			s.Add(i)
 		}
 	}
 	return s
@@ -273,12 +267,17 @@ func (d DataFlow) getBuildableTypes(catalog Cata, reqd, optional *Set[Type]) *Se
 	return s
 }
 
-func createDataFlow(catalog Cata) {
-	flow := NewDataFlow()
+func NewDataFlow(catalog Cata) DataFlow {
+	flow := DataFlow{
+		nodes:     []Node{},
+		max_level: 0,
+	}
+	type2fn := buildTypeIndex(catalog)
+
 	maxlevel := Level(3)
 	level := Level(0)
 	for level <= maxlevel {
-		n_terms := 0
+		n_terms := 3
 		// Add some terms to the current level.
 		// Terms are chosen from the set of possible ones: h_i^*
 		// This set is too large to build explicitly, so we're going to break it down and sample it instead.
@@ -294,9 +293,22 @@ func createDataFlow(catalog Cata) {
 		t0 := flow.getTypeSet(level-1, level-1)
 		t1 := flow.getTypeSet(0, level-1)
 		t2 := flow.getBuildableTypes(catalog, t0, t1)
-
+		for range n_terms {
+			typ, _ := t2.Sample()
+			m := type2fn[typ]
+			fn := catalog[m[rand.IntN(len(m))]]
+			arg_nodes := flow.findArgNodesForFn(fn, level)
+			node := Node{
+				fn:        fn,
+				level:     level,
+				arg_nodes: arg_nodes,
+			}
+			flow.nodes = append(flow.nodes, node)
+		}
 		level += 1
 	}
+
+	return flow
 }
 
 func sampleDataflow() {
@@ -317,7 +329,7 @@ func sampleDataflow() {
 	// tc := buildTypeCatalog(catalog)
 	// fmt.Printf("tc = %#v \n", tc)
 
-	df := createDataFlow(catalog)
+	df := NewDataFlow(catalog)
 	fmt.Printf("%+v\n", df)
 
 	// The plan is to eventually

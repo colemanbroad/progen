@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"reflect"
 )
 
@@ -25,6 +26,13 @@ func (s *Set[T]) String() string {
 		}
 	}
 	return str
+}
+
+func (s *Set[T]) Sample() (ret T, err error) {
+	if s.Size() == 0 {
+		return ret, fmt.Errorf("no elems")
+	}
+	return s.Elements()[rand.IntN(s.Size())], nil
 }
 
 // NewSet creates a new empty set.

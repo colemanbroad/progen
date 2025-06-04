@@ -282,7 +282,7 @@ The E-graph is uniquely defined by the Catalog,
 and has a node for every element of the Catalog and a box drawn around nodes with the same return type
 and a numbered, directed edge out from each node pointing to a box of appropriate type corresponding to the arguments to that function.
 
-== TF-Graphs
+== TF-Graph
 
 The TF-Graph is also uniquely defined by the Catalog.
 The initial catalog is a `map<Name, Function>`,
