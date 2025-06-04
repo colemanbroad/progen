@@ -209,7 +209,7 @@ type DataFlow struct {
 	max_level uint
 }
 
-func (d DataFlow) getTypeSet(min_level, max_level Level) *Set[Type] {
+func (d DataFlow) getTypeSetWhereLvl(min_level, max_level Level) *Set[Type] {
 	s := NewSet[Type]()
 	for _, n := range d.nodes {
 		b0 := n.level >= min_level
@@ -256,7 +256,7 @@ func (d DataFlow) getBuildableTypes(catalog Cata, reqd, optional *Set[Type]) *Se
 	s := NewSet[uint32]()
 	for _, fun := range catalog {
 		a := NewSetFromSlice(fun.ptypes)
-		if a.Intersection(reqd).Size() == 0 {
+		if a.Intersection(reqd).Size() < reqd.Size() {
 			continue
 		}
 		if a.Difference(optional).Size() > 0 {
@@ -267,36 +267,74 @@ func (d DataFlow) getBuildableTypes(catalog Cata, reqd, optional *Set[Type]) *Se
 	return s
 }
 
+// We need to keep track of which nodes are at the fronteir of unevald nodes.
+// This requires a simple set of fronteir nodes, and a way of figuing out which
+// new nodes to add to the frontier after a frontier node has been added to the program.
+//
+// Initially, if a node has no deps we add it to the frontier.
+// Then when we remove a node from the frontier we check it's deps
+// against the set of nodes already in the program. If the set contains,
+// then we add it to the frontier (greedily). The frontier set can dedup.
+// This alg is O(program_length ^ 2), because we check the full flow after every new line.
+//
+// A faster version would just add all the level n nodes (in any order) before adding lvl n+1,
+// but this is only a subset of linearizations.
+func (d DataFlow) linearize() Program {
+	prog := Program{}
+	// gen := GenSym{
+	// 	idx: 0,
+	// }
+	// first, let's just make a program in the node order.
+	for i, n := range d.nodes {
+		argsyms := []Sym{}
+		for _, a := range n.arg_nodes {
+			argsyms = append(argsyms, Sym(fmt.Sprintf("v%v", a)))
+		}
+		stmt := Statement{
+			fn:      n.fn,
+			outsym:  Sym(fmt.Sprintf("v%v", i)),
+			argsyms: argsyms,
+		}
+		prog = append(prog, stmt)
+		// for _, a := range n.arg_nodes {
+		// 	args := []uint{}
+		// 	// args = append(args, a, i)
+		// 	// node_inv = append(node_inv)
+		// }
+	}
+	return prog
+}
+
+// Add some terms to the current level.
+// Terms are chosen from the set of possible ones: h_i^*
+// This set is too large to build explicitly, so we're going to break it down and sample it instead.
+
+// Once we know that a fragment is ACTUALLY, properly buildable,
+// then we go about sampling args (node indices of appropriate type).
+// Then we can add it!
+// t0 := flow.getRTypeSet(min_level=0, max_level=level-1)
+// t1 := flow.getRTypeSet(min_level=level-1, max_level=level-1)
+// fnt2 := flow.getBuildableFnTypes(catalog, necessary=t1, optional=t1)
+// t_chosen := multiSampleN(set=fnt2,n=5) // n may be greater than len(set)
+// nodes := chooseWires(t_chosen, necessary=t0, optional=t1)
 func NewDataFlow(catalog Cata) DataFlow {
 	flow := DataFlow{
 		nodes:     []Node{},
 		max_level: 0,
 	}
-	type2fn := buildTypeIndex(catalog)
+	type2fns := buildTypeIndex(catalog)
 
 	maxlevel := Level(3)
 	level := Level(0)
 	for level <= maxlevel {
 		n_terms := 3
-		// Add some terms to the current level.
-		// Terms are chosen from the set of possible ones: h_i^*
-		// This set is too large to build explicitly, so we're going to break it down and sample it instead.
-
-		// Once we know that a fragment is ACTUALLY, properly buildable,
-		// then we go about sampling args (node indices of appropriate type).
-		// Then we can add it!
-		// t0 := flow.getRTypeSet(min_level=0, max_level=level-1)
-		// t1 := flow.getRTypeSet(min_level=level-1, max_level=level-1)
-		// fnt2 := flow.getBuildableFnTypes(catalog, necessary=t1, optional=t1)
-		// t_chosen := multiSampleN(set=fnt2,n=5) // n may be greater than len(set)
-		// nodes := chooseWires(t_chosen, necessary=t0, optional=t1)
-		t0 := flow.getTypeSet(level-1, level-1)
-		t1 := flow.getTypeSet(0, level-1)
+		t0 := flow.getTypeSetWhereLvl(level-1, level-1)
+		t1 := flow.getTypeSetWhereLvl(0, level-1)
 		t2 := flow.getBuildableTypes(catalog, t0, t1)
 		for range n_terms {
 			typ, _ := t2.Sample()
-			m := type2fn[typ]
-			fn := catalog[m[rand.IntN(len(m))]]
+			catFns := type2fns[typ]
+			fn := catalog[catFns[rand.IntN(len(catFns))]]
 			arg_nodes := flow.findArgNodesForFn(fn, level)
 			node := Node{
 				fn:        fn,
@@ -312,7 +350,6 @@ func NewDataFlow(catalog Cata) DataFlow {
 }
 
 func sampleDataflow() {
-
 	zero := FnT("zero", []MyType{}, "int")
 	zero.value = func() int { return 0 }
 	one := FnT("one", []MyType{}, "int")
@@ -326,84 +363,11 @@ func sampleDataflow() {
 		"++": plus,
 	}
 
-	// tc := buildTypeCatalog(catalog)
-	// fmt.Printf("tc = %#v \n", tc)
-
 	df := NewDataFlow(catalog)
 	fmt.Printf("%+v\n", df)
 
-	// The plan is to eventually
-	// 0. pick n
-	// 1. pick bold(h) = h0, h1, ..., hn
-	// 2. pick m_i = h^*_i choose h_i  foreach i in [n]
-	// 3. randomly linearize
-
-	// Termset is insufficient, because we need to know WHO to attach to!
-	// Not just Fun, But something like a full blown Statement!
-
-	// fmt.Printf("terms = %+v \n", flow.levels)
-
-	// terms : (lvl:int, t:type) -> Set<Term>
-	// How do we know what values are available in terms[i+1] given terms[0:i] ?
-	// We do:
-	//   terms[i+1] = union l[i+1, t] forall t in types
-	// where
-	//   l[i+1, t] = union values(l[:i], fn, i) forall fn in Catalog where fn.rtype = t
-	// where
-	//   values(terms, fn, i) = "all possible combinations of arguments to fn taken"
-	//
-	// OK, wait... We need to index the catalog by hash(fn.type) when doing type-first flow gen,
-	// but when building the flow we need to index `terms` by fn.rtype.
-	// Do we need to index `terms` by hash(fn.type) ?
-	//
+	prog := df.linearize()
+	printProgram(prog, Fmt)
+	// fmt.Printf("%+v\n", prog)
 
 }
-
-// Now that we have the index from Type -> Fragments we can start with building
-// the more complex structure: the dataflow. How are we going to build it?
-// Well we start by sampling a _type_ from the keys to typecat. Then we check all
-// the valid syms of the correct types as args, and each time we check the FULL
-// program DAG's hash value to see if it already exists (has already been created, even during
-// an intermediate stage earlier in program gen). If so, then we skip it and move on. Even
-// if the final structure had a totally different hash function.
-
-// OK, now we can determine the level for any F or T, as well if the Catalog is buildable.
-// But we want to *count* the ways that an F or T could be built!  An F can be run in a
-// number of ways equal to the size of the input space (number of possible input tuple
-// values). A T can be built in a number of ways equal to the sum of this number across
-// input funcs.
-
-// When counting it's very easy to construct a catalog with types that can be built in
-// infinite ways. Any time we have an F : (..., T) -> T we have inf ways of building T.
-// And this inf pollutes all downstream types i.e. F2 : T -> T2 has inf ways of building
-// T2 because it inherits from T. This inf occurrs whenever we have a loop in the graph,
-// even if it spans multiple F, e.g. T1 -> F1 -> T2 -> F2 -> T1.
-//
-// How should we deal with these inifinities?
-// Doesn't this remind you of Feynman Diagrams?
-//
-// Also, I think this particular kind of factor graph should be called an FT-Graph.
-//
-// One way to deal with these infs is to limit the integral to DAGs of a certain size.
-//
-// We can always generate programs of infinite size simply by using multiple disconnected
-// components, or by repeating
-//
-// Counting the product space of inputs to F is not enough! This models every input as independent, but we can use the same input in multiple arguments of the same type! Is this sufficient to
-// count all the dags? What about correlations between even more distant objects, things that aren't args to the same F ? Have we undercounted by ignoring the DAGs with lots of shared reuse of Ts?
-// What if, instead, we counted DAGs with each node labeled F, and then removed the dags that violated our type constraints?
-//
-// What about counting higher-kinded-types and generics in these graphs?
-// Maybe it's easier to start with a Partial Order / Relation
-//
-// The basic technique of building programs directly by sampling random fragments with random connections tends to dramatically oversample DAGs that have a lot of F where the order doesn't matter. E.g. the program `A(); B(); C(); A(); C();` has one DAG but 5! programs that could be sampled. While `A(B(C(A(C))))` has one DAG and one program.
-
-// t0 counts the number of ways we can make a type (ignoring program size).
-// Many types have infinite way of being constructed!
-// This happens whenever there is a loop in the TypeGraph upstream of the desired type T.
-// How do you even *have* a loop in the TypeGraph? The TypeGraph must have factor graph
-// structure, s.t. there is bipartite separation between types and funcs. So a loop exists
-// when F : (... , T) -> T, which forms a loop T -> F -> T in the TypeGraph.
-// So the DAG is a factor-graph-DAG. And we want to count/enumerate these factor-graph-dags.
-//
-// We should make this factor graph dag explicit?
