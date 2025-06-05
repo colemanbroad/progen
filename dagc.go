@@ -445,6 +445,47 @@ func (d DataFlow) getBuildableFnTypes(catalog Cata, reqd, optional *Set[Type]) *
 // but this is only a subset of linearizations.
 func (d DataFlow) linearize() Program {
 	prog := Program{}
+
+	nodes_added := NewSet[uint]()
+	line_no := 0
+
+	for nodes_added.Size() < len(d.nodes) {
+		// identify ready nodes
+		nodes_ready := NewSet[uint]()
+		for i, node := range d.nodes {
+			b0 := nodes_added.Contains(uint(i))
+			b1 := NewSetFromSlice(node.arg_nodes).Difference(nodes_added).Size() == 0
+			if !b0 && b1 {
+				nodes_ready.Add(uint(i))
+			}
+		}
+
+		// add a random ready node
+		id, _ := nodes_ready.Sample()
+		nodes_added.Add(id)
+		n := d.nodes[id]
+		stmt := node2stmt(n, id)
+		prog = append(prog, stmt)
+		line_no += 1
+		fmt.Println(stmt)
+	}
+	return prog
+}
+func node2stmt(n Node, idx uint) Statement {
+	argsyms := []Sym{}
+	for _, a := range n.arg_nodes {
+		argsyms = append(argsyms, Sym(fmt.Sprintf("v%v", a)))
+	}
+	stmt := Statement{
+		fn:      n.fn,
+		outsym:  Sym(fmt.Sprintf("v%v", idx)),
+		argsyms: argsyms,
+	}
+	return stmt
+}
+
+func (d DataFlow) linearize_1() Program {
+	prog := Program{}
 	// first, let's just make a program in the node order.
 	for i, n := range d.nodes {
 		argsyms := []Sym{}
