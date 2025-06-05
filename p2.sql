@@ -7,7 +7,7 @@ select name, type FROM sqlite_master
 
 -- .exit
 
-    -- Quick snapshot of the main table and columns.
+-- Quick snapshot of the main table and columns.
 select *, count() from wire_pow_of_two
 group by campaign_id
 ;
@@ -47,7 +47,7 @@ where cnt = 2
 -- Let's look at the reward over time. Does it look like the fancy
 -- wiring approaches find powers of two earlier and then peter out?
 -- I don't see it! But the table shows a small but clear difference.
--- x=time y=logrew c=logrew col=decay
+    -- x=time y=logrew c=logrew col=decay
 select *, log(2, reward) as logrew
 from wire_pow_of_two
 where reward > 0

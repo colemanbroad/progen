@@ -126,6 +126,7 @@ func runPow2() {
 			}
 			sp.WireDecayLen = decay
 			sp.Program_length = proglen
+
 			fmt.Println("Begin wiring: ", sp)
 			init_history()
 			init_reward()
@@ -140,7 +141,7 @@ func runPow2() {
 				global_time += 1
 			}
 			stats.print()
-			savePow2(sp)
+			// savePow2(sp)
 		}
 	}
 }

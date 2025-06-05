@@ -14,12 +14,6 @@ func init() {
 
 func main() {
 
-	test_dagc()
-
-	sampleDataflow()
-
-	os.Exit(0)
-
 	gob := flag.Int("n", -1, "Can we build it? Yes we can!")
 	lib := NewLib()
 	flag.Parse()
@@ -38,16 +32,20 @@ func main() {
 		os.Exit(0)
 	}
 
+	// test_dagc()
+	// sampleDataflow()
+	// os.Exit(0)
+
 	// iterate()
 	// os.Exit(0)
 
-	p := sample2lvl()
-	vm, _ := evalProgram(p)
-	printProgramAndValues(p, vm)
+	// p := sample2lvl()
+	// vm, _ := evalProgram(p)
+	// printProgramAndValues(p, vm)
 
 	// deltaDebug()
 	// benchmarkSampleProgram()
-	// runPow2()
+	runPow2()
 	// runWire()
 	// runGenetic()
 }
