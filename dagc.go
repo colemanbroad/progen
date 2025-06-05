@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"math/rand/v2"
+	"slices"
 )
 
 // We want to count the number of ways of making any type available in the catalog.
@@ -264,8 +265,7 @@ func (d DataFlow) getTypeSetWhereLvl(min_level, max_level Level) *Set[Type] {
 // for each a in ptypes.
 // If NONE of the s[a] are 1, then we resample. This can be done very quickly!
 //
-//
-//
+// This function must also DEDUP!
 
 func (d DataFlow) findArgNodesForFn(fn Fun, lvl Level) []uint {
 
@@ -290,36 +290,59 @@ func (d DataFlow) findArgNodesForFn(fn Fun, lvl Level) []uint {
 	}
 	sample := make([]int, len(probs))
 
-	broken := false
-sample_loop:
-	for range 100 {
-		for i, p := range probs {
-			sample[i] = bool2int(rand.Float64() < p)
+	argnodes := make([]uint, len(fn.ptypes))
+	wireloop_count := 0
+wire_loop:
+	for range 30 {
+		sampleloop_count := 0
+	sample_loop:
+		for range 100 {
+			for i, p := range probs {
+				sample[i] = bool2int(rand.Float64() < p)
+			}
+			for _, s := range sample {
+				if s == 1 {
+					break sample_loop
+				}
+			}
+			sampleloop_count += 1
 		}
-		for _, s := range sample {
+		if sampleloop_count == 100 {
+			panic("Broken sample_loop. ")
+		} else {
+			fmt.Printf("sample_loop count = %v \n", sampleloop_count)
+		}
+
+		// rejection sampling on full node + wiring. only reject if it's a duplicate.
+		for i, s := range sample {
 			if s == 1 {
-				broken = true
-				break sample_loop
+				// Arg comes from lvl = i-1
+				a, err := sets[i][0].Sample()
+				_ = err
+				argnodes[i] = uint(a)
+			} else {
+				// Arg comes from lvl in 0..i-2
+				a, err := sets[i][1].Sample()
+				_ = err
+				argnodes[i] = uint(a)
 			}
 		}
-	}
-	if !broken {
-		panic("WTF: ")
-	}
-
-	argnodes := make([]uint, len(fn.ptypes))
-	for i, s := range sample {
-		if s == 1 {
-			// Arg comes from lvl = i-1
-			a, err := sets[i][0].Sample()
-			_ = err
-			argnodes[i] = uint(a)
-		} else {
-			// ARg comes from lvl in 0..i-2
-			a, err := sets[i][1].Sample()
-			_ = err
-			argnodes[i] = uint(a)
+		other_at_this_level := d.getNodesWhereLevel(lvl, lvl)
+		for _, id := range other_at_this_level.Elements() {
+			n := d.nodes[id]
+			b0 := fn.name == n.fn.name
+			b1 := slices.Equal(argnodes, n.arg_nodes)
+			if !(b0 && b1) {
+				break wire_loop
+			}
 		}
+		wireloop_count += 1
+	}
+	if wireloop_count == 30 {
+		printProgram(d.linearize(), Fmt)
+		panic("Broken wire_loop. ")
+	} else {
+		fmt.Printf("wire_loop count = %v \n", wireloop_count)
 	}
 
 	return argnodes
@@ -389,6 +412,19 @@ func (d DataFlow) getNodesOfTypeWhereLevel(typ Type, min_level, max_level Level)
 	return s
 }
 
+func (d DataFlow) getNodesWhereLevel(min_level, max_level Level) *Set[int] {
+	s := NewSet[int]()
+	for i, n := range d.nodes {
+		b0 := n.level >= min_level
+		b1 := n.level <= max_level
+		// b2 := n.fn.rtype == typ
+		if b0 && b1 {
+			s.Add(i)
+		}
+	}
+	return s
+}
+
 func (d DataFlow) getBuildableTypes(catalog Cata, reqd, optional *Set[Type]) *Set[uint32] {
 	s := NewSet[uint32]()
 	for _, fun := range catalog {
@@ -418,9 +454,6 @@ func (d DataFlow) getBuildableTypes(catalog Cata, reqd, optional *Set[Type]) *Se
 // but this is only a subset of linearizations.
 func (d DataFlow) linearize() Program {
 	prog := Program{}
-	// gen := GenSym{
-	// 	idx: 0,
-	// }
 	// first, let's just make a program in the node order.
 	for i, n := range d.nodes {
 		argsyms := []Sym{}
@@ -433,11 +466,6 @@ func (d DataFlow) linearize() Program {
 			argsyms: argsyms,
 		}
 		prog = append(prog, stmt)
-		// for _, a := range n.arg_nodes {
-		// 	args := []uint{}
-		// 	// args = append(args, a, i)
-		// 	// node_inv = append(node_inv)
-		// }
 	}
 	return prog
 }
@@ -463,16 +491,18 @@ func NewDataFlow(catalog Cata) DataFlow {
 
 	maxlevel := Level(3)
 	level := Level(0)
+	n_terms := 2
 	for level <= maxlevel {
-		n_terms := 3
 		t0 := flow.getTypeSetWhereLvl(level-1, level-1)
 		t1 := flow.getTypeSetWhereLvl(0, level-1)
 		t2 := flow.getBuildableTypes(catalog, t0, t1)
+		// max_terms := 2
+		// items := sampleDistinct(n_terms, max_terms)
 		for range n_terms {
 			typ, _ := t2.Sample()
 			catFns := type2fns[typ]
 			fn := catalog[catFns[rand.IntN(len(catFns))]]
-			arg_nodes := flow.findArgNodesForFn(fn, level)
+			arg_nodes := flow.findArgNodesForFn(fn, level) // this should do rejection sampling to avoid duplicating syntactic nodes
 			node := Node{
 				fn:        fn,
 				level:     level,
@@ -481,9 +511,16 @@ func NewDataFlow(catalog Cata) DataFlow {
 			flow.nodes = append(flow.nodes, node)
 		}
 		level += 1
+		n_terms += 1
 	}
-
 	return flow
+}
+
+func sampleDistinct(n, max int) []int {
+	if n > max {
+		return nil
+	}
+	return rand.Perm(max)[:n]
 }
 
 func sampleDataflow() {
@@ -504,5 +541,7 @@ func sampleDataflow() {
 	fmt.Printf("%+v\n", df)
 
 	prog := df.linearize()
-	printProgram(prog, Fmt)
+	vals, _ := evalProgram(prog)
+	printProgramAndValues(prog, vals)
+	// printProgram(prog, Fmt)
 }
