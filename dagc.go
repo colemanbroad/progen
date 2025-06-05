@@ -221,7 +221,144 @@ func (d DataFlow) getTypeSetWhereLvl(min_level, max_level Level) *Set[Type] {
 	return s
 }
 
+// What makes this tricky is how to evenly sample possible wirings,
+// when you have the constraint that _at least one_ arg must come from
+// level=i-1.
+//
+// Approach 1:
+//
+// Build every wiring foreach a in ptypes where a is restricted to level=i-1
+// but the remaining args are allowed to range from level=0..i-1 .
+// Then we union the |ptypes| wiring sets together and sample from the union.
+// This is not feasible.
+//
+// Approach 2:
+//
+// Count size wiring set foreach a in ptypes where
+//   a in level=i-1, ~a in level=0..i-1
+// But then the union will double count some wirings.
+//
+// Approach 3:
+//
+// Count size of wiring sets foreach a in ptypes, but make them distinct.
+//   size of a in i-1, ~a in 0..i-2 FORALL a in choose(n < |ptypes|, from=ptypes)
+//
+// Approach 4:
+//
+// Rejection sampling
+// Sample a in 0..i-1 forall a in ptypes,
+// then reject if NO a has level=i-1
+//
+// Approach 5:
+//
+// If the size of lvl=i-1 << size of lvl=0..i-2 (for the desired type)
+// then use Approach 3, otherwise reject using Approach 4.
+//
+// Approach 6:
+// s[a] = (c0, c1) where
+//  c0 = count of possible connections at lvl=0..i-2
+//  c1 = count of possible connections at lvl=i-1
+// forall a in ptypes
+// Now, we could compute all possibilities and sample one. OR
+// We sample s[a] from {0,1} with probabilities c0/(c0+c1) and c1/(c0+c1).
+// for each a in ptypes.
+// If NONE of the s[a] are 1, then we resample. This can be done very quickly!
+//
+//
+//
+
 func (d DataFlow) findArgNodesForFn(fn Fun, lvl Level) []uint {
+
+	if lvl == 0 {
+		if len(fn.ptypes) == 0 {
+			return []uint{}
+		}
+		panic("no way jose")
+	}
+
+	probs := []float64{}
+	type P = [2]*Set[int]
+	sets := []P{}
+	for _, a := range fn.ptypes {
+		n1 := d.getNodesOfTypeWhereLevel(a, lvl-1, lvl-1)
+		n2 := d.getNodesOfTypeWhereLevel(a, 0, lvl-2)
+		sets = append(sets, P{n1, n2})
+		c1 := float64(n1.Size())
+		c2 := float64(n2.Size())
+		p1 := c1 / (c1 + c2)
+		probs = append(probs, p1)
+	}
+	sample := make([]int, len(probs))
+
+	broken := false
+sample_loop:
+	for range 100 {
+		for i, p := range probs {
+			sample[i] = bool2int(rand.Float64() < p)
+		}
+		for _, s := range sample {
+			if s == 1 {
+				broken = true
+				break sample_loop
+			}
+		}
+	}
+	if !broken {
+		panic("WTF: ")
+	}
+
+	argnodes := make([]uint, len(fn.ptypes))
+	for i, s := range sample {
+		if s == 1 {
+			// Arg comes from lvl = i-1
+			a, err := sets[i][0].Sample()
+			_ = err
+			argnodes[i] = uint(a)
+		} else {
+			// ARg comes from lvl in 0..i-2
+			a, err := sets[i][1].Sample()
+			_ = err
+			argnodes[i] = uint(a)
+		}
+	}
+
+	return argnodes
+}
+
+func bool2int(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+func (d DataFlow) findArgNodesForFn_1(fn Fun, lvl Level) []uint {
+	argnodes := []uint{}
+outer:
+	for range 10 {
+		argnodes = []uint{}
+		for _, a := range fn.ptypes {
+			nodes := d.getNodesOfTypeWhereLevel(a, 0, lvl-1)
+			if nodes.Size() == 0 {
+				panic("unreachable")
+			}
+			id, err := nodes.Sample()
+			if err != nil {
+				panic("impossible")
+			}
+			argnodes = append(argnodes, uint(id))
+		}
+
+		for _, id := range argnodes {
+			if d.nodes[id].level == lvl-1 {
+				break outer
+			}
+		}
+	}
+	return argnodes
+}
+
+func (d DataFlow) findArgNodesForFn_0(fn Fun, lvl Level) []uint {
 	s := []uint{}
 	for _, a := range fn.ptypes {
 		n1 := d.getNodesOfTypeWhereLevel(a, lvl-1, lvl-1)
@@ -368,6 +505,4 @@ func sampleDataflow() {
 
 	prog := df.linearize()
 	printProgram(prog, Fmt)
-	// fmt.Printf("%+v\n", prog)
-
 }
