@@ -90,7 +90,7 @@ func evalStatement(stmt Statement, locals ValueMap) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Printf("Panic! We called evalStmt with args %v and func g = %v ", args, g)
+			fmt.Printf("Panic! We called evalStmt with args %v and func g = %v .\n", args, g)
 		}
 	}()
 	r = g.Call(args)[0].Interface()

@@ -571,32 +571,38 @@ func (d DataFlow) String() string {
 	return l
 }
 
+func zeroOnePlusCatalog() Catalog {
+	zero := fnT("zero", []MyType{}, "int")
+	zero.value = func() int { return 0 }
+	one := fnT("one", []MyType{}, "int")
+	one.value = func() int { return 1 }
+	plus := fnT("plus", []MyType{"int", "int"}, "int")
+	plus.value = func(a, b int) int { return a + b }
+	catalog := Catalog{
+		"00": zero,
+		"11": one,
+		"++": plus,
+	}
+	return catalog
+}
+
 func testDataflow() {
-	// zero := fnT("zero", []MyType{}, "int")
-	// zero.value = func() int { return 0 }
-	// one := fnT("one", []MyType{}, "int")
-	// one.value = func() int { return 1 }
-	// plus := fnT("plus", []MyType{"int", "int"}, "int")
-	// plus.value = func(a, b int) int { return a + b }
-
-	// catalog := Catalog{
-	// 	"00": zero,
-	// 	"11": one,
-	// 	"++": plus,
-	// }
-
 	lib := NewLib()
 	lib.addBasicMathLib()
-	// lib.addPowerOfTwo()
-
+	lib.addPowerOfTwo()
+	fmt.Printf("lib = %+v \n", lib)
+	init_history()
+	init_reward()
+	// b := lib.fns["isPowerOfTwo"].value
 	params := DataFlowParams{
-		counts: []int{1, 3, 3, 6, 8, 8, 8, 8, 8, 8, 8},
+		counts: []int{1, 3, 3, 6},
 	}
 	df := newDataFlow(lib.fns, params)
 	// df := newDataFlow(catalog, params)
-	fmt.Printf("%+v\n", df)
+	// fmt.Printf("%+v\n", df)
 
 	prog := df.linearize()
+	// prog := lib.sampleProgram(newSampleParams())
 	// printProgram(prog, Fmt)
 	vals, _ := evalProgram(prog)
 	printProgramAndValues(prog, vals)

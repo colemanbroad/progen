@@ -132,16 +132,16 @@ func runPow2() {
 			init_reward()
 			stats := NewDepthStats()
 			global_time = 0
-			for range 100 {
+			for range 1 {
 				// fmt.Println("i = ", i)
 				prog := lib.sampleProgram(sp)
 				vals, _ := evalProgram(prog)
-				// printProgramAndValues(prog, vals)
+				printProgramAndValues(prog, vals)
 				stats.update(prog, vals)
 				global_time += 1
 			}
 			stats.print()
-			savePow2(sp)
+			// savePow2(sp)
 		}
 	}
 }
