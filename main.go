@@ -2,8 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"os"
 )
 
 var dbname *string
@@ -14,27 +12,21 @@ func init() {
 
 func main() {
 
-	gob := flag.Int("n", -1, "Can we build it? Yes we can!")
-	lib := NewLib()
+	pick_number := flag.Int("n", -1, "Can we build it? Yes we can!")
+
 	flag.Parse()
 	if flag.NFlag() == 0 {
-		fmt.Println("dbname = ", *dbname)
 		flag.Usage()
 		return
 	}
 
-	if *gob != -1 {
-		fn_library = make(map[Sym]Fun)
-		value_library = make(map[Sym]Value)
-		lib.addBasicMathLib()
-		// delete(fn_library, "one")
-		gobTheBuilder(*gob)
-		os.Exit(0)
+	if *pick_number != -1 {
+		gobTheBuilder(*pick_number)
+		return
 	}
 
+	testDataflow()
 	// test_dagc()
-	// sampleDataflow()
-	// os.Exit(0)
 
 	// iterate()
 	// os.Exit(0)
@@ -45,7 +37,7 @@ func main() {
 
 	// deltaDebug()
 	// benchmarkSampleProgram()
-	runPow2()
+	// runPow2()
 	// runWire()
 	// runGenetic()
 }

@@ -1,6 +1,6 @@
 -- .mode col
 
--- First, list all the tables.
+    -- First, list all the tables.
 select name FROM sqlite_master WHERE type='table';
 
 -- controlled variables

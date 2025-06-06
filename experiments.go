@@ -116,7 +116,7 @@ func runPow2() {
 	// fn_library = make(map[Sym]Fun)
 	lib := NewLib()
 	lib.addBasicMathLib()
-	// addPowerOfTwo()
+	lib.addPowerOfTwo()
 	for _, proglen := range []int{100} {
 		for _, decay := range []float64{0.0, 0.1, 1.0} {
 			sp := newSampleParams()
@@ -132,7 +132,7 @@ func runPow2() {
 			init_reward()
 			stats := NewDepthStats()
 			global_time = 0
-			for range 1 {
+			for range 100 {
 				// fmt.Println("i = ", i)
 				prog := lib.sampleProgram(sp)
 				vals, _ := evalProgram(prog)
@@ -141,7 +141,41 @@ func runPow2() {
 				global_time += 1
 			}
 			stats.print()
-			// savePow2(sp)
+			savePow2(sp)
+		}
+	}
+}
+
+func runPow2Dataflow() {
+	// fn_library = make(map[Sym]Fun)
+	lib := NewLib()
+	lib.addBasicMathLib()
+	lib.addPowerOfTwo()
+	for _, proglen := range []int{100} {
+		for _, decay := range []float64{0.0} {
+			sp := newSampleParams()
+			sp.Wire_nearby = true
+			if decay == 0.0 {
+				sp.Wire_nearby = false
+			}
+			sp.WireDecayLen = decay
+			sp.Program_length = proglen
+
+			fmt.Println("Begin wiring: ", sp)
+			init_history()
+			init_reward()
+			stats := NewDepthStats()
+			global_time = 0
+			for range 100 {
+				// fmt.Println("i = ", i)
+				prog := lib.sampleProgram(sp)
+				vals, _ := evalProgram(prog)
+				// printProgramAndValues(prog, vals)
+				stats.update(prog, vals)
+				global_time += 1
+			}
+			stats.print()
+			savePow2(sp)
 		}
 	}
 }
@@ -152,7 +186,15 @@ func savePow2(sp SampleParams) {
 	var err error
 	var s string
 	campaign_id := generateRandomString(16)
-	s = `create table if not exists wire_pow_of_two (value real, reward real, time int, campaign_id string, proglen int, decay float)`
+	s = `create table if not exists
+		wire_pow_of_two(
+			value       real,
+			reward      real,
+			time        int,
+			campaign_id string,
+			proglen     int,
+			decay       float
+		)`
 	_, err = db.Exec(s)
 	check(err)
 	// s = `create table if not exists program_history (prog string, reward real, time int, campaign_id string)`

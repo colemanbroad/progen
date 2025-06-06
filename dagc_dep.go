@@ -2,7 +2,7 @@ package main
 
 import "fmt"
 
-func mapit(catalog Cata) {
+func mapit(catalog Catalog) {
 	t0 := map[MyType]int{}
 	for _, fn := range catalog {
 		if len(fn.ptypes) == 0 {

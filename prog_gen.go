@@ -90,7 +90,7 @@ func evalStatement(stmt Statement, locals ValueMap) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Printf("We called with args %v and func g = %v ", args, g)
+			fmt.Printf("Panic! We called evalStmt with args %v and func g = %v ", args, g)
 		}
 	}()
 	r = g.Call(args)[0].Interface()
@@ -107,14 +107,9 @@ func evalStatement(stmt Statement, locals ValueMap) {
 	locals[stmt.outsym] = val
 }
 
-func NewValueMap() map[Sym]Value {
-	locals := make(ValueMap)
-	return locals
-}
-
 func evalProgram(program Program) (values ValueMap, reward float64) {
 	r0 := Reward_total
-	locals := NewValueMap()
+	locals := ValueMap{}
 	if value_library != nil {
 		maps.Copy(locals, value_library)
 	}
@@ -177,7 +172,7 @@ func (lib Library) sampleProgram(sp SampleParams) Program {
 	// gensym := GenSym{idx: 0}
 	program := make(Program, sp.Program_length)
 	// TODO: use the Catalog with lineno info to have more control over initial wiring
-	local_catalog := NewCatalog(sp.Program_length)
+	local_catalog := NewSymLineIndex(sp.Program_length)
 	depthmap := make(map[Sym]int)
 
 	pl := 0
@@ -195,7 +190,7 @@ func (lib Library) sampleProgram(sp SampleParams) Program {
 		}
 	}
 
-	global_catalog := NewCatalog(len(lib.vals))
+	global_catalog := NewSymLineIndex(len(lib.vals))
 	for sym, val := range lib.vals {
 		global_catalog.add(sym, val.vtype, 0) // FIXME! line is wrong
 	}
@@ -354,19 +349,25 @@ func (g *GenSym) genUnique(existing SymSet) Sym {
 	}
 }
 
-type Catalog struct {
+// TODO: We need a generic word for structure carrying two lookups
+// that move back and forth between two sets.
+// A relation is defined on one set, but here we're really talking
+// about two different sets/types of things. Further, a relation
+// can be turned into two mappings (left->right) and (right -> left),
+// but the two-mappings form deserves it's own name, surely?
+type SymLineIndex struct {
 	syms     map[SymLine]Type
 	syms_inv map[Type][]SymLine
 }
 
-func NewCatalog(n int) Catalog {
-	return Catalog{
+func NewSymLineIndex(n int) SymLineIndex {
+	return SymLineIndex{
 		syms:     make(map[SymLine]Type, n),
 		syms_inv: make(map[Type][]SymLine, n),
 	}
 }
 
-func (cat *Catalog) add(s_new Sym, t_new Type, line uint16) {
+func (cat *SymLineIndex) add(s_new Sym, t_new Type, line uint16) {
 	symline := SymLine{sym: s_new, line: line}
 	t, ok := cat.syms[symline]
 	if ok {

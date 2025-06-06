@@ -1,8 +1,12 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func gobTheBuilder(n int) {
+	fn_library = make(map[Sym]Fun)
+	value_library = make(map[Sym]Value)
 	lib := NewLib()
 	lib.addBasicMathLib()
 	sp := newSampleParams()

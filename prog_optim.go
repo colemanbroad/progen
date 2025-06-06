@@ -114,6 +114,15 @@ func (program UncheckedProgram) renameSyms(renames map[Sym]Sym) {
 	}
 }
 
+func (program Program) fixSymOrder() {
+	renamer := map[Sym]Sym{}
+	for lino, stmt := range program {
+		renamer[stmt.outsym] = Sym(fmt.Sprintf("v%v", lino))
+	}
+	up := UncheckedProgram(program)
+	up.renameSyms(renamer)
+}
+
 // Change the sym names used in `tochange` to be disjoint from names used in `fixed` (either argsyms or outsyms).
 func (tochange UncheckedProgram) uniquifySyms(fixed UncheckedProgram) {
 	symset_p1 := getSymSet(fixed)

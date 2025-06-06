@@ -30,7 +30,7 @@ const (
 	D MyType = "D"
 )
 
-func FnT(name string, ptypes []MyType, rtype MyType) Fun {
+func fnT(name string, ptypes []MyType, rtype MyType) Fun {
 	return Fun{
 		value:  nil,
 		name:   name,
@@ -40,16 +40,16 @@ func FnT(name string, ptypes []MyType, rtype MyType) Fun {
 }
 
 var (
-	f = FnT("f", []MyType{}, A)
-	g = FnT("g", []MyType{}, B)
-	h = FnT("h", []MyType{A, B}, C)
-	i = FnT("i", []MyType{}, A)
-	j = FnT("j", []MyType{A}, A)
-	k = FnT("k", []MyType{A, C}, A)
-	l = FnT("l", []MyType{A, C}, D)
+	f = fnT("f", []MyType{}, A)
+	g = fnT("g", []MyType{}, B)
+	h = fnT("h", []MyType{A, B}, C)
+	i = fnT("i", []MyType{}, A)
+	j = fnT("j", []MyType{A}, A)
+	k = fnT("k", []MyType{A, C}, A)
+	l = fnT("l", []MyType{A, C}, D)
 )
 
-type Cata map[string]Fun
+type Catalog = map[Sym]Fun
 
 // A smarter way might be to just map between names.
 type TypeCatalog struct {
@@ -58,39 +58,37 @@ type TypeCatalog struct {
 }
 
 // Inverts a catalog to find fns which provide/require a given type.
-func buildTypeCatalog(catalog Cata) TypeCatalog {
+func buildTypeCatalog(catalog Catalog) TypeCatalog {
 	cg := TypeCatalog{
 		in:  map[MyType][]string{},
 		out: map[MyType][]string{},
 	}
 	for name, f := range catalog {
 		funcs, _ := cg.in[f.rtype]
-		funcs = append(funcs, name)
+		funcs = append(funcs, string(name))
 		cg.in[f.rtype] = funcs
 		for _, a := range f.ptypes {
 			funcs, _ := cg.out[a]
-			funcs = append(funcs, name)
+			funcs = append(funcs, string(name))
 			cg.out[a] = funcs
 		}
 	}
 	return cg
 }
 
-func test_dagc() {
-	catalog := Cata{
+func testEverything() {
+	catalog := Catalog{
 		"f": f, "g": g, "h": h,
 		"i": i, "j": j, "k": k,
 		"l": l,
 	}
 	fmt.Println(f, g, h)
 	fmt.Println(catalog)
-
-	cata2 := buildTypeCatalog(catalog)
-	fmt.Printf("cata2 (TypeCatalog) := %+v \n", cata2)
-
-	determineLevel(catalog)
-	type_index := buildTypeIndex(catalog)
-	fmt.Printf("type_index (map[u32][]string) = %+v \n", type_index)
+	type_catalog := buildTypeCatalog(catalog)
+	fmt.Printf("cata2 (TypeCatalog) := %+v \n", type_catalog)
+	determineMinimumLevel(catalog)
+	ti_catalog := buildTypeIndexedCatalog(catalog)
+	fmt.Printf("type_index (map[u32][]string) = %+v \n", ti_catalog)
 }
 
 // We can use the TF-Graph to build an index of types and their trasitive requirements.
@@ -98,15 +96,17 @@ func test_dagc() {
 // We can assign a level to every F and T, which begins at zero for F : () -> T foreach T,
 // and zero foreach T produced by each F. Then it increments to one for F : T -> T2 that require only
 // T : lvl=0 and then T produced by those F *and not already a lower level*.
-func determineLevel(catalog Cata) {
+//
+// How does level here relate to Dataflow.nodes[i].level ?
+// This fn computes the minimal number of unique fns that must be called before
+// a Type or Fn can be called. Is this the minimal level?
+func determineMinimumLevel(catalog Catalog) {
 	lvlF := map[string]int{}
 	lvlT := map[MyType]int{}
 
 	tset := NewSet[MyType]()
 	fset := NewSet[string]()
 	level := 0
-
-	// c
 
 	for fset.Size() < len(catalog) {
 		addedOne := false
@@ -118,14 +118,14 @@ func determineLevel(catalog Cata) {
 				continue
 			}
 			// buildable. but does it already exist?
-			_, ok := lvlF[name]
+			_, ok := lvlF[string(name)]
 			if ok {
 				continue
 			}
 			// it's buildable and hasn't been added yet
 			addedOne = true
-			lvlF[name] = level
-			fset.Add(name)
+			lvlF[string(name)] = level
+			fset.Add(string(name))
 			// has the rtype been added ?
 			_, ok = lvlT[f.rtype]
 			if ok {
@@ -181,14 +181,14 @@ func (m *Fun) hashOf() uint32 {
 }
 
 // Build index from hash(Type) to []Fragment.name.
-func buildTypeIndex(catalog Cata) map[uint32][]string {
+func buildTypeIndexedCatalog(catalog Catalog) map[uint32][]string {
 	typecat := map[uint32][]string{}
 	for name, fn := range catalog {
 		l, ok := typecat[fn.hashOf()]
 		if !ok {
 			l = make([]string, 0, 10)
 		}
-		l = append(l, name)
+		l = append(l, string(name))
 		typecat[fn.hashOf()] = l
 	}
 	return typecat
@@ -266,11 +266,11 @@ func (d DataFlow) getTypeSetWhereLvl(min_level, max_level Level) *Set[Type] {
 // If NONE of the s[a] are 1, then we resample. This can be done very quickly!
 
 func (d DataFlow) findArgNodesForFn(fn Fun, lvl Level) []uint {
+	if len(fn.ptypes) == 0 {
+		return []uint{}
+	}
 	if lvl == 0 {
-		if len(fn.ptypes) == 0 {
-			return []uint{}
-		}
-		panic("no way jose")
+		panic("no way jose we shouldn't be here!")
 	}
 	probs := []float64{}
 	type P = [2]*Set[int]
@@ -416,14 +416,19 @@ func (d DataFlow) getNodesWhereLevel(min_level, max_level Level) *Set[int] {
 	return s
 }
 
-func (d DataFlow) getBuildableFnTypes(catalog Cata, reqd, optional *Set[Type]) *Set[uint32] {
+func (d DataFlow) getBuildableFnTypes(catalog Catalog, level_prev, levels_all *Set[Type], level int) *Set[uint32] {
 	s := NewSet[uint32]()
 	for _, fun := range catalog {
-		a := NewSetFromSlice(fun.ptypes)
-		if a.Intersection(reqd).Size() < reqd.Size() {
+		if len(fun.ptypes) == 0 && level == 0 {
+			s.Add(fun.hashOf())
 			continue
 		}
-		if a.Difference(optional).Size() > 0 {
+		argtypes := NewSetFromSlice(fun.ptypes)
+		if argtypes.Difference(level_prev).Size() == argtypes.Size() {
+			// if argtypes.Intersection(level_prev).Size() < level_prev.Size() {
+			continue
+		}
+		if argtypes.Difference(levels_all).Size() > 0 {
 			continue
 		}
 		s.Add(fun.hashOf())
@@ -469,6 +474,7 @@ func (d DataFlow) linearize() Program {
 		line_no += 1
 		fmt.Println(stmt)
 	}
+	// prog.fixSymOrder()
 	return prog
 }
 func node2stmt(n Node, idx uint) Statement {
@@ -514,28 +520,27 @@ func (d DataFlow) linearize_1() Program {
 // fnt2 := flow.getBuildableFnTypes(catalog, necessary=t1, optional=t1)
 // t_chosen := multiSampleN(set=fnt2,n=5) // n may be greater than len(set)
 // nodes := chooseWires(t_chosen, necessary=t0, optional=t1)
-func NewDataFlow(catalog Cata) DataFlow {
+
+type DataFlowParams struct {
+	counts []int
+}
+
+func newDataFlow(catalog Catalog, params DataFlowParams) DataFlow {
 	flow := DataFlow{
 		nodes:     []Node{},
 		max_level: 0,
 	}
-	type2fns := buildTypeIndex(catalog)
-
-	maxlevel := Level(3)
-	level := Level(0)
-	n_terms := 2
-	for level <= maxlevel {
+	type2fns := buildTypeIndexedCatalog(catalog)
+	for level, n_terms := range params.counts {
 		t0 := flow.getTypeSetWhereLvl(level-1, level-1)
 		t1 := flow.getTypeSetWhereLvl(0, level-1)
-		t2 := flow.getBuildableFnTypes(catalog, t0, t1)
-		// max_terms := 2
-		// items := sampleDistinct(n_terms, max_terms)
+		t2 := flow.getBuildableFnTypes(catalog, t0, t1, level)
 		for range n_terms {
 			lc := 0
 			for {
 				typ, _ := t2.Sample()
 				catFns := type2fns[typ]
-				fn := catalog[catFns[rand.IntN(len(catFns))]]
+				fn := catalog[Sym(catFns[rand.IntN(len(catFns))])]
 				arg_nodes := flow.findArgNodesForFn(fn, level) // this should do rejection sampling to avoid duplicating syntactic nodes
 				node := Node{
 					fn:        fn,
@@ -554,8 +559,6 @@ func NewDataFlow(catalog Cata) DataFlow {
 				break
 			}
 		}
-		level += 1
-		n_terms += 1
 	}
 	return flow
 }
@@ -568,31 +571,33 @@ func (d DataFlow) String() string {
 	return l
 }
 
-func sampleDistinct(n, max int) []int {
-	if n > max {
-		return nil
+func testDataflow() {
+	// zero := fnT("zero", []MyType{}, "int")
+	// zero.value = func() int { return 0 }
+	// one := fnT("one", []MyType{}, "int")
+	// one.value = func() int { return 1 }
+	// plus := fnT("plus", []MyType{"int", "int"}, "int")
+	// plus.value = func(a, b int) int { return a + b }
+
+	// catalog := Catalog{
+	// 	"00": zero,
+	// 	"11": one,
+	// 	"++": plus,
+	// }
+
+	lib := NewLib()
+	lib.addBasicMathLib()
+	// lib.addPowerOfTwo()
+
+	params := DataFlowParams{
+		counts: []int{1, 3, 3, 6, 8, 8, 8, 8, 8, 8, 8},
 	}
-	return rand.Perm(max)[:n]
-}
-
-func sampleDataflow() {
-	zero := FnT("zero", []MyType{}, "int")
-	zero.value = func() int { return 0 }
-	one := FnT("one", []MyType{}, "int")
-	one.value = func() int { return 1 }
-	plus := FnT("plus", []MyType{"int", "int"}, "int")
-	plus.value = func(a, b int) int { return a + b }
-
-	catalog := Cata{
-		"00": zero,
-		"11": one,
-		"++": plus,
-	}
-
-	df := NewDataFlow(catalog)
+	df := newDataFlow(lib.fns, params)
+	// df := newDataFlow(catalog, params)
 	fmt.Printf("%+v\n", df)
 
 	prog := df.linearize()
+	// printProgram(prog, Fmt)
 	vals, _ := evalProgram(prog)
 	printProgramAndValues(prog, vals)
 	// printProgram(prog, Fmt)
