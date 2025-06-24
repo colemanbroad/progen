@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestExperPeano(t *testing.T) {
+func Test_runPeano(t *testing.T) {
 	*dbname = testdir + "testdb.peano.db" // global
 	// swap stdout
 	ofile, _ := os.OpenFile(testdir+"testdb.peano.out", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
@@ -27,7 +27,7 @@ func TestExperPeano(t *testing.T) {
 	}
 }
 
-func TestExperPow2(t *testing.T) {
+func Test_runPow2(t *testing.T) {
 	*dbname = testdir + "testdb.pow2.db"
 	// swap stdout
 	ofile, _ := os.OpenFile(testdir+"testdb.pow2.out", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)

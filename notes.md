@@ -710,3 +710,11 @@ I think my loss might be pointing in the wrong direction, I want to see numbers 
 I think the train/vali/test data may not be correctly separated.
 I think I've missed a factor of two somewhere.
 We can be somewhat confident that we're not missing a factor of two after a refactor by comparing to our previous best results. 
+
+My `TestExper*` fns do not control experiment params, but rather text runPeano explicitly. 
+If my Test is 1-1 with a function or method should that be apparent from the name?
+
+
+
+
+
