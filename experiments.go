@@ -46,7 +46,7 @@ func initPeano(cheating Cheating) Library {
 		delete(fn_library, "zero")
 
 		// if we remove Zero from fn_lib here then it won't be available
-		//  when we need to eval the program later!
+		// when we need to eval the program later!
 		// So... this method doesn't work. We could have a generic
 		// "filter library syms" function that is applied during
 		// sampleProgram... But this will not work. We could use a
@@ -141,40 +141,6 @@ func runPow2() {
 				global_time += 1
 			}
 			stats.print()
-			// savePow2(sp)
-		}
-	}
-}
-
-func runPow2Dataflow() {
-	// fn_library = make(map[Sym]Fun)
-	lib := NewLib()
-	lib.addBasicMathLib()
-	lib.addPowerOfTwo()
-	for _, proglen := range []int{100} {
-		for _, decay := range []float64{0.0} {
-			sp := newSampleParams()
-			sp.Wire_nearby = true
-			if decay == 0.0 {
-				sp.Wire_nearby = false
-			}
-			sp.WireDecayLen = decay
-			sp.Program_length = proglen
-
-			fmt.Println("Begin wiring: ", sp)
-			init_history()
-			init_reward()
-			stats := NewDepthStats()
-			global_time = 0
-			for range 100 {
-				// fmt.Println("i = ", i)
-				prog := lib.sampleProgram(sp)
-				vals, _ := evalProgram(prog)
-				// printProgramAndValues(prog, vals)
-				stats.update(prog, vals)
-				global_time += 1
-			}
-			stats.print()
 			savePow2(sp)
 		}
 	}
@@ -216,6 +182,29 @@ func savePow2(sp SampleParams) {
 	}
 	err = tx.Commit()
 	check(err)
+}
+
+func runPow2Dataflow() {
+	lib := NewLib()
+	lib.addBasicMathLib()
+	lib.addPowerOfTwo()
+	fmt.Printf("lib = %+v \n", lib)
+	init_history()
+	init_reward()
+	// b := lib.fns["isPowerOfTwo"].value
+	params := DataFlowParams{
+		counts: []int{1, 3, 3, 6, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8},
+	}
+	df := newDataFlow(lib.fns, params)
+	prog := df.linearize()
+	// printProgram(prog, Fmt)
+	vals, _ := evalProgram(prog)
+	printProgramAndValues(prog, vals)
+	stats := NewDepthStats()
+	stats.update(prog, vals)
+	stats.print()
+	// printProgram(prog, Fmt)
+	// savePow2()
 }
 
 // How does mutation affect PowerOfTwo?

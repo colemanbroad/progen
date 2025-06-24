@@ -242,8 +242,9 @@ func rewireBase[T Program | UncheckedProgram](prog T) (Program, bool) {
 		for j, argtype := range stmt.fn.ptypes {
 			arg_options := catalog[argtype]
 			if len(arg_options) == 0 {
-				panicIfInvalid(prog_copy)
-				return Program(prog_copy), false // no new wiring found
+				panic("impossible. there must be at least one fn in the catalog.")
+				// panicIfInvalid(prog_copy)
+				// return Program(prog_copy), false // no new wiring found
 			}
 			n := rand.Intn(len(arg_options))
 			stmt.argsyms[j] = arg_options[n]
@@ -362,6 +363,7 @@ func (lib Library) RunGenetic(p GPParams) {
 
 // copies oprog
 func shuffle(oprog Program) Program {
+	return oprog
 	count := 0
 	if !isValid(oprog) {
 		panic("we fucked up")

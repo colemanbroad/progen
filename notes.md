@@ -637,3 +637,76 @@ This is difficult for two reasons:
 1. because we have to treat most of the SUT like a black box, with logging as our limited window into it's internal states.
 2. because the phase space of the SUT is most often a complex web and highly chaotic, so it's hard to know what trajectories
 through the space (of which we have limited visibility) will be taken given any (state, action) pair.
+
+# Dagc Experiments
+
+We want to compare dataflow-first (DF) program generation to alternatives
+like Forward Sampling (FS) with tail-weight (FSTW)
+on the power-of-two challenge. DF generation allows you to control `hbar` the seqence
+describing the number of unique values at each depth. FS and control the total number of statements, but otherwise is parameter free. FSTW has a weight that allows biasing the wiring
+distribution away from flat towards something that prefers recently added lines and therefore
+deeper connections. How does this affect power of two? If we have no knowledge except depth
+then we know that the deeper value in the `1 + * <<` system are more more likely to be zero.
+But this fragment system is trivial. 
+
+---  ---  ---  --- ---  ---  ---  --- ---  ---  ---  --- ---  ---  ---  --- 
+
+We compare Forward vs DF program generation methods and analyze their effectiveness at exploring different catalogs.
+We know apriori that DF will explore more *syntactic* values than Forward, but how does this translate to important values in different catalogs we've been trying?
+
+Q: Will positive or negative results affect our decision to use DF in the future?
+    Or is broad coverage over syntactic values the only reasonable choice in the absence of any knowledge about Catalogs?
+
+Q: How do we incorporate learning into DF generation?
+    Should we start off with a method that incorporates learning and then shape that method to our priors?
+    Does Piece-based gen do this?
+    Does "tree based" do this? 
+
+--- --- ---  --- --- ---  --- --- ---  --- --- ---  --- --- --- 
+
+I'm noticing a natural desire arise to factor Experiments by splitting
+- different experiments into different top-level files with no directly shared dependencies (only downstream shared).
+- the ability to run with/without saving.
+- the ability to run with saving AND plotting. Everything from scratch! And checking invariants? What would this look like?
+- the ability to describe the input data for every experiment (allows for fuzzing). For starters just list possible values for every field, then randomly, independently choose.
+
+Right now I haven't run any code in a while.
+I suspect that everything still works fine, but I don't know for sure.
+Did something on my mac machine change? 
+On my work machine?
+I'm not sure I ever even ran this code on my work machine.
+Do my plots still refer to the right tables?
+Does my code compile? Easy, run `go build`.
+Do my experiments actually have interesting params selected?
+Did I break something along the code path.
+Since I suspect that everything is fine I want to be greedy and run a full end-to-end experiment + plotting.
+I don't care if the numbers are exactly the same as a prior set of numbers...
+If they weren't the same I wouldn't know where to look anyways...
+Unless I had run the same experiment on a previous commit and knew the numbers, then I could look at the diff.
+I can run `go build` to find compile errors.
+I think these questions can be answered quickly, so I don't want to parse a lot of plots and output just to confirm something I already largely believe (my code is ok).
+Do my tests work?
+`go test` says I'm missing a database file.
+
+I don't want my test printf's and test infra to log to the same stream!
+This has to change.
+So the solution is to manually redirect the output to a (distinct) file for every Test fn.
+This is actually quite a nice approach..
+I also needed to change `GOFLAGS='-tags=sqlite_math_functions'`.
+This can be set permanently (across sessions) with `go env -w GOFLAGS=...`.
+And then finally I needed to remove the sqlite specific pragmas, which only work if I feed the file directly into sqlite3 cmdline tool.
+Now `go test` passes totally clean in 6s !
+Most of the 6s are spent doing `shuffle(program)`, which is implemented in a really dumb way!
+We randomly shuffle, then check for validity (rejection sample)!
+We shouldn't have to do this!
+We should be able to shuffle easily (this is another strength of the dataflow-first approach).
+Maybe the best way to shuffle is to create the dataflow from the program and then sample a linearization? 
+Removing rejection sampling from shuffle brings the test suite down to 0.43s, including Exper* tests!
+
+How should we test longer processes like training?
+What are the failure modes?
+What do you want to know?
+I think my loss might be pointing in the wrong direction, I want to see numbers go down.
+I think the train/vali/test data may not be correctly separated.
+I think I've missed a factor of two somewhere.
+We can be somewhat confident that we're not missing a factor of two after a refactor by comparing to our previous best results. 

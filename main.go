@@ -25,7 +25,7 @@ func main() {
 		return
 	}
 
-	testDataflow()
+	// testDataflow()
 	// test_dagc()
 
 	// iterate()
@@ -38,6 +38,7 @@ func main() {
 	// deltaDebug()
 	// benchmarkSampleProgram()
 	// runPow2()
+	runPow2Dataflow()
 	// runWire()
 	// runGenetic()
 }

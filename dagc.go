@@ -595,7 +595,7 @@ func testDataflow() {
 	init_reward()
 	// b := lib.fns["isPowerOfTwo"].value
 	params := DataFlowParams{
-		counts: []int{1, 3, 3, 6},
+		counts: []int{1, 3, 3, 6, 8, 8, 8},
 	}
 	df := newDataFlow(lib.fns, params)
 	// df := newDataFlow(catalog, params)
